@@ -1,0 +1,397 @@
+@import "tailwindcss";
+
+/* Custom theme configuration for Tailwind v4 */
+@theme {
+  --color-node-50: #f0f9ff;
+  --color-node-100: #e0f2fe;
+  --color-node-200: #bae6fd;
+  --color-node-300: #7dd3fc;
+  --color-node-400: #38bdf8;
+  --color-node-500: #0ea5e9;
+  --color-node-600: #0284c7;
+  --color-node-700: #0369a1;
+  --color-node-800: #075985;
+  --color-node-900: #0c4a6e;
+
+  --color-edge-high: #22c55e;
+  --color-edge-medium: #eab308;
+  --color-edge-low: #f97316;
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* ========================================
+   LIGHT THEME (default)
+   ======================================== */
+
+html.light {
+  color-scheme: light;
+}
+
+html.light body {
+  background-color: #f8fafc; /* slate-50 */
+  color: #1e293b; /* slate-800 */
+}
+
+/* ========================================
+   DARK THEME
+   ======================================== */
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0f172a; /* slate-900 */
+  color: #f1f5f9; /* slate-100 */
+}
+
+/* ========================================
+   COMPONENT STYLES
+   ======================================== */
+
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-150;
+  }
+
+  .btn-primary {
+    @apply bg-node-600 text-white hover:bg-node-700 active:bg-node-800;
+  }
+
+  html.light .btn-secondary {
+    @apply bg-slate-200 text-slate-700 hover:bg-slate-300 active:bg-slate-400;
+  }
+
+  html.dark .btn-secondary {
+    @apply bg-slate-700 text-slate-200 hover:bg-slate-600 active:bg-slate-500;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800;
+  }
+
+  /* Inputs - base styles without horizontal padding (let components specify) */
+  .input {
+    @apply py-2 rounded-lg transition-colors duration-150;
+    @apply focus:outline-none focus:ring-2 focus:ring-node-500 focus:border-transparent;
+  }
+
+  html.light .input {
+    @apply border border-slate-300 bg-white text-slate-800;
+    @apply placeholder-slate-400;
+  }
+
+  html.dark .input {
+    @apply border border-slate-600 bg-slate-700 text-slate-100;
+    @apply placeholder-slate-400;
+  }
+
+  /* Cards */
+  html.light .card {
+    @apply rounded-xl shadow-sm p-4 transition-colors duration-150;
+    @apply bg-white border border-slate-200;
+  }
+
+  html.dark .card {
+    @apply rounded-xl shadow-sm p-4 transition-colors duration-150;
+    @apply bg-slate-800 border-slate-700;
+  }
+
+  /* Tags */
+  .tag {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  html.light .tag-default {
+    @apply bg-slate-100 text-slate-700;
+  }
+
+  html.dark .tag-default {
+    @apply bg-slate-700 text-slate-300;
+  }
+
+  html.light .tag-source {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  html.dark .tag-source {
+    @apply bg-blue-900 text-blue-300;
+  }
+
+  html.light .tag-datetime {
+    @apply bg-gray-100 text-gray-600;
+  }
+
+  html.dark .tag-datetime {
+    @apply bg-gray-800 text-gray-400;
+  }
+
+  html.light .tag-custom {
+    @apply bg-purple-100 text-purple-700;
+  }
+
+  html.dark .tag-custom {
+    @apply bg-purple-900 text-purple-300;
+  }
+
+  /* Toggle button container - explicit theme styles */
+  html.light .toggle-container {
+    @apply bg-slate-100;
+  }
+
+  html.dark .toggle-container {
+    @apply bg-slate-800;
+  }
+
+  /* Toggle button - active state */
+  html.light .toggle-btn-active {
+    @apply bg-white text-slate-800 shadow-sm;
+  }
+
+  html.dark .toggle-btn-active {
+    @apply bg-slate-700 text-slate-100 shadow-sm;
+  }
+
+  /* Toggle button - inactive state */
+  html.light .toggle-btn-inactive {
+    @apply text-slate-600;
+  }
+  html.light .toggle-btn-inactive:hover {
+    @apply text-slate-800;
+  }
+
+  html.dark .toggle-btn-inactive {
+    @apply text-slate-400;
+  }
+  html.dark .toggle-btn-inactive:hover {
+    @apply text-slate-200;
+  }
+
+  /* Related node items - explicit theme styles */
+  html.light .related-node-item {
+    @apply bg-slate-50 hover:bg-slate-100;
+  }
+
+  html.dark .related-node-item {
+    @apply bg-slate-700/50 hover:bg-slate-700;
+  }
+
+  /* Header - explicit theme styles */
+  html.light .header {
+    @apply bg-white border-slate-200;
+  }
+
+  html.dark .header {
+    @apply bg-slate-800 border-slate-700;
+  }
+
+  /* Theme toggle button */
+  html.light .theme-toggle {
+    @apply text-slate-500 hover:text-slate-700 hover:bg-slate-100;
+  }
+
+  html.dark .theme-toggle {
+    @apply text-slate-400 hover:text-slate-200 hover:bg-slate-700;
+  }
+}
+
+/* ========================================
+   THEME-AWARE TEXT UTILITY CLASSES
+   Use these instead of Tailwind's text-slate-* classes
+   ======================================== */
+
+/* Primary text - for main content */
+.theme-text-primary {
+  color: #334155; /* slate-700 */
+}
+html.dark .theme-text-primary {
+  color: #cbd5e1; /* slate-300 */
+}
+
+/* Secondary text - for headings */
+.theme-text-heading {
+  color: #1e293b; /* slate-800 */
+}
+html.dark .theme-text-heading {
+  color: #f1f5f9; /* slate-100 */
+}
+
+/* Muted text - for labels and secondary info */
+.theme-text-muted {
+  color: #64748b; /* slate-500 */
+}
+html.dark .theme-text-muted {
+  color: #94a3b8; /* slate-400 */
+}
+
+/* Subtle text - for timestamps and less important info */
+.theme-text-subtle {
+  color: #94a3b8; /* slate-400 */
+}
+html.dark .theme-text-subtle {
+  color: #64748b; /* slate-500 */
+}
+
+/* Code/inline code background */
+.theme-bg-code {
+  background-color: #f1f5f9; /* slate-100 */
+}
+html.dark .theme-bg-code {
+  background-color: #334155; /* slate-700 */
+}
+
+/* ========================================
+   CLICKABLE/INTERACTIVE STYLES
+   ======================================== */
+
+/* Clickable tag styles */
+.tag-clickable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+html.light .tag-clickable:hover {
+  filter: brightness(0.95);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.3);
+}
+
+html.dark .tag-clickable:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.4);
+}
+
+/* Clickable extracted entity styles */
+.extracted-clickable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  margin: -0.125rem -0.25rem;
+}
+
+html.light .extracted-clickable:hover {
+  background-color: rgba(14, 165, 233, 0.1);
+}
+
+html.dark .extracted-clickable:hover {
+  background-color: rgba(14, 165, 233, 0.2);
+}
+
+/* Icon button styles for edit/delete actions */
+.icon-btn {
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+html.light .icon-btn {
+  color: #64748b;
+}
+html.light .icon-btn:hover {
+  color: #334155;
+  background-color: #f1f5f9;
+}
+
+html.dark .icon-btn {
+  color: #94a3b8;
+}
+html.dark .icon-btn:hover {
+  color: #e2e8f0;
+  background-color: #334155;
+}
+
+html.light .icon-btn-danger:hover {
+  color: #dc2626;
+  background-color: #fef2f2;
+}
+
+html.dark .icon-btn-danger:hover {
+  color: #f87171;
+  background-color: rgba(220, 38, 38, 0.2);
+}
+
+/* Inline edit input styles */
+.inline-edit-input {
+  font-size: inherit;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  min-width: 60px;
+}
+
+/* Selection popover styles */
+.selection-popover {
+  position: absolute;
+  z-index: 100;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Card background for popovers and floating elements */
+html.light .theme-bg-card {
+  background-color: #ffffff;
+}
+
+html.dark .theme-bg-card {
+  background-color: #1e293b;
+}
+
+/* Theme border */
+html.light .theme-border {
+  border-color: #e2e8f0; /* slate-200 */
+}
+
+html.dark .theme-border {
+  border-color: #475569; /* slate-600 */
+}
+
+/* Combobox dropdown styles */
+html.light .combobox-dropdown {
+  background-color: #ffffff;
+}
+
+html.dark .combobox-dropdown {
+  background-color: #1e293b;
+}
+
+html.light .combobox-option:hover {
+  background-color: #f1f5f9;
+}
+
+html.dark .combobox-option:hover {
+  background-color: #334155;
+}
+
+html.light .combobox-option-selected {
+  background-color: #e2e8f0;
+}
+
+html.dark .combobox-option-selected {
+  background-color: #475569;
+}

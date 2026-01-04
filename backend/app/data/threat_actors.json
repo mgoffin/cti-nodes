@@ -1,0 +1,196 @@
+{
+  "description": "Threat actor names using Microsoft naming convention as canonical, with aliases",
+  "source": "https://learn.microsoft.com/en-us/unified-secops/microsoft-threat-actor-naming",
+  "actors": [
+    {
+      "canonical_name": "Forest Blizzard",
+      "country": "Russia",
+      "aliases": ["APT28", "Fancy Bear", "Sofacy", "Sednit", "STRONTIUM", "Pawn Storm", "TG-4127", "Tsar Team"]
+    },
+    {
+      "canonical_name": "Midnight Blizzard",
+      "country": "Russia",
+      "aliases": ["APT29", "Cozy Bear", "The Dukes", "NOBELIUM", "UNC2452", "Dark Halo", "YTTRIUM"]
+    },
+    {
+      "canonical_name": "Seashell Blizzard",
+      "country": "Russia",
+      "aliases": ["Sandworm", "IRIDIUM", "TeleBots", "Voodoo Bear", "ELECTRUM", "Iron Viking"]
+    },
+    {
+      "canonical_name": "Star Blizzard",
+      "country": "Russia",
+      "aliases": ["SEABORGIUM", "Callisto Group", "ColdRiver", "TA446", "BlueCharlie"]
+    },
+    {
+      "canonical_name": "Secret Blizzard",
+      "country": "Russia",
+      "aliases": ["Turla", "Snake", "Venomous Bear", "KRYPTON", "Waterbug", "WhiteBear", "Uroburos"]
+    },
+    {
+      "canonical_name": "Aqua Blizzard",
+      "country": "Russia",
+      "aliases": ["Gamaredon", "Primitive Bear", "ACTINIUM", "Shuckworm", "Armageddon"]
+    },
+    {
+      "canonical_name": "Cadet Blizzard",
+      "country": "Russia",
+      "aliases": ["DEV-0586", "UNC2589"]
+    },
+    {
+      "canonical_name": "Silk Typhoon",
+      "country": "China",
+      "aliases": ["HAFNIUM", "UNC2980"]
+    },
+    {
+      "canonical_name": "Volt Typhoon",
+      "country": "China",
+      "aliases": ["VANGUARD PANDA", "DEV-0391", "UNC3236", "Bronze Silhouette", "Insidious Taurus"]
+    },
+    {
+      "canonical_name": "Flax Typhoon",
+      "country": "China",
+      "aliases": ["ETHEREAL PANDA", "RedJuliett"]
+    },
+    {
+      "canonical_name": "Salt Typhoon",
+      "country": "China",
+      "aliases": ["GhostEmperor", "FamousSparrow", "UNC2286"]
+    },
+    {
+      "canonical_name": "Raspberry Typhoon",
+      "country": "China",
+      "aliases": ["RADIUM", "APT30", "Naikon"]
+    },
+    {
+      "canonical_name": "Circle Typhoon",
+      "country": "China",
+      "aliases": ["DEV-0322", "APT31", "Zirconium", "Judgment Panda", "Bronze Vinewood"]
+    },
+    {
+      "canonical_name": "Granite Typhoon",
+      "country": "China",
+      "aliases": ["GALLIUM", "Softcell", "APT-BITTER"]
+    },
+    {
+      "canonical_name": "Mulberry Typhoon",
+      "country": "China",
+      "aliases": ["APT5", "MANGANESE", "Keyhole Panda", "Bronze Fleetwood"]
+    },
+    {
+      "canonical_name": "Nylon Typhoon",
+      "country": "China",
+      "aliases": ["APT15", "NICKEL", "Vixen Panda", "Ke3chang", "Bronze Palace"]
+    },
+    {
+      "canonical_name": "Charcoal Typhoon",
+      "country": "China",
+      "aliases": ["CHROMIUM", "ControlX", "APT-Q-02"]
+    },
+    {
+      "canonical_name": "Peach Sandstorm",
+      "country": "Iran",
+      "aliases": ["APT33", "HOLMIUM", "Elfin", "Refined Kitten", "Magnallium"]
+    },
+    {
+      "canonical_name": "Mint Sandstorm",
+      "country": "Iran",
+      "aliases": ["APT35", "PHOSPHORUS", "Charming Kitten", "Ajax Security Team", "NewsBeef", "Newscaster"]
+    },
+    {
+      "canonical_name": "Cotton Sandstorm",
+      "country": "Iran",
+      "aliases": ["NEPTUNIUM", "Marnanbridge", "Haywire Kitten"]
+    },
+    {
+      "canonical_name": "Crimson Sandstorm",
+      "country": "Iran",
+      "aliases": ["CURIUM", "TA456", "Imperial Kitten", "Tortoiseshell"]
+    },
+    {
+      "canonical_name": "Mango Sandstorm",
+      "country": "Iran",
+      "aliases": ["MERCURY", "MuddyWater", "Static Kitten", "Seedworm", "TEMP.Zagros"]
+    },
+    {
+      "canonical_name": "Pumpkin Sandstorm",
+      "country": "Iran",
+      "aliases": ["DEV-0146"]
+    },
+    {
+      "canonical_name": "Citrine Sleet",
+      "country": "North Korea",
+      "aliases": ["DEV-0139", "AppleJeus", "Labyrinth Chollima", "UNC4736"]
+    },
+    {
+      "canonical_name": "Diamond Sleet",
+      "country": "North Korea",
+      "aliases": ["ZINC", "Lazarus Group", "HIDDEN COBRA", "Guardians of Peace", "APT38", "Bluenoroff", "Stardust Chollima"]
+    },
+    {
+      "canonical_name": "Emerald Sleet",
+      "country": "North Korea",
+      "aliases": ["THALLIUM", "Kimsuky", "Velvet Chollima", "Black Banshee", "APT43"]
+    },
+    {
+      "canonical_name": "Jade Sleet",
+      "country": "North Korea",
+      "aliases": ["DEV-0954", "TraderTraitor", "UNC4899"]
+    },
+    {
+      "canonical_name": "Moonstone Sleet",
+      "country": "North Korea",
+      "aliases": ["DEV-0530", "Storm-1789"]
+    },
+    {
+      "canonical_name": "Onyx Sleet",
+      "country": "North Korea",
+      "aliases": ["PLUTONIUM", "Andariel", "Silent Chollima", "DarkSeoul"]
+    },
+    {
+      "canonical_name": "Opal Sleet",
+      "country": "North Korea",
+      "aliases": ["OSMIUM", "Konni", "TA406"]
+    },
+    {
+      "canonical_name": "Ruby Sleet",
+      "country": "North Korea",
+      "aliases": ["CERIUM", "APT37", "Reaper", "ScarCruft", "Group123", "Ricochet Chollima"]
+    },
+    {
+      "canonical_name": "Sapphire Sleet",
+      "country": "North Korea",
+      "aliases": ["COPERNICIUM", "BlueNoroff", "CryptoCore", "Dangerous Password"]
+    },
+    {
+      "canonical_name": "Sangria Tempest",
+      "country": "Cybercrime",
+      "aliases": ["ELBRUS", "Carbon Spider", "FIN7"]
+    },
+    {
+      "canonical_name": "Vanilla Tempest",
+      "country": "Cybercrime",
+      "aliases": ["DEV-0832", "Vice Society"]
+    },
+    {
+      "canonical_name": "Manatee Tempest",
+      "country": "Cybercrime",
+      "aliases": ["DEV-0243", "EvilCorp", "UNC2165", "Indrik Spider"]
+    },
+    {
+      "canonical_name": "Wine Tempest",
+      "country": "Cybercrime",
+      "aliases": ["PARINACOTA", "Wadhrama"]
+    },
+    {
+      "canonical_name": "Caramel Tsunami",
+      "country": "Private Sector Offensive",
+      "aliases": ["SOURGUM", "Candiru"]
+    },
+    {
+      "canonical_name": "Hazel Sandstorm",
+      "country": "Iran",
+      "aliases": ["EUROPIUM", "OilRig", "APT34", "Helix Kitten", "Cobalt Gypsy", "Crambus"]
+    }
+  ]
+}

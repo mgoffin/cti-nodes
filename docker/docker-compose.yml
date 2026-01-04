@@ -1,0 +1,26 @@
+services:
+  nodes:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: nodes-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - nodes-data:/app/data
+    environment:
+      - NODES_DEBUG=false
+      - NODES_DATABASE_PATH=/app/data/nodes.db
+      - NODES_HOST=0.0.0.0
+      - NODES_PORT=8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  nodes-data:
+    name: nodes-data
