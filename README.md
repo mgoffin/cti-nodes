@@ -30,6 +30,10 @@ Think of it as a "threat intel scratch pad" that builds its own connection map.
 
 - **Relationship Notifications** - Get notified when new connections are discovered ("Found 5 related nodes!")
 - **Threat Actor Normalization** - Uses Microsoft threat actor naming as the canonical standard, with alias mapping (e.g., "Fancy Bear" → "Forest Blizzard")
+- **Entity Validation** - Automatically detects and suggests corrections for:
+  - Type mismatches (e.g., filename labeled as domain)
+  - Defanged IOCs that should be refanged (e.g., `192[.]168[.]1[.]1` → `192.168.1.1`)
+- **Dark/Light Theme** - Toggle between dark and light modes for comfortable viewing
 
 ## Planned Features
 
@@ -60,13 +64,18 @@ nodes/
 │   │   │   ├── nodes.py         # Node CRUD endpoints
 │   │   │   ├── tags.py          # Tag endpoints
 │   │   │   ├── edges.py         # Edge endpoints
-│   │   │   └── search.py        # Search endpoint
+│   │   │   ├── search.py        # Search endpoint
+│   │   │   └── extracted.py     # Extracted entity endpoints
 │   │   ├── core/
 │   │   │   ├── config.py        # App configuration
 │   │   │   └── database.py      # SQLite connection
 │   │   ├── extractors/
 │   │   │   ├── ioc.py           # IOC regex patterns
-│   │   │   └── entities.py      # Named entity matching
+│   │   │   ├── entities.py      # Named entity matching
+│   │   │   └── defang.py        # Defang/refang utilities
+│   │   ├── validators/
+│   │   │   ├── entity_validator.py  # Entity type validation
+│   │   │   └── tag_suggester.py     # Tag autocomplete
 │   │   ├── linker/
 │   │   │   └── auto_link.py     # Auto-linking logic
 │   │   ├── models/
@@ -79,12 +88,24 @@ nodes/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── NodeForm.tsx
-│   │   │   ├── NodeList.tsx
-│   │   │   ├── GraphView.tsx
-│   │   │   └── SearchBar.tsx
+│   │   │   ├── Layout.tsx       # App layout with navigation
+│   │   │   ├── Dashboard.tsx    # Main dashboard view
+│   │   │   ├── NodeList.tsx     # Node list display
+│   │   │   ├── NodeDetail.tsx   # Single node view
+│   │   │   ├── NewNode.tsx      # Create node form
+│   │   │   ├── GraphView.tsx    # Cytoscape graph visualization
+│   │   │   ├── SearchBar.tsx    # Search input component
+│   │   │   ├── TagManager.tsx   # Tag editing interface
+│   │   │   └── ExtractedManager.tsx  # Entity management
 │   │   ├── hooks/
+│   │   │   └── useTheme.tsx     # Dark/light theme toggle
 │   │   ├── api/
+│   │   │   └── client.ts        # API client functions
+│   │   ├── utils/
+│   │   │   ├── formatters.ts    # Display formatting utilities
+│   │   │   └── entityColors.ts  # Entity highlight colors
+│   │   ├── types/
+│   │   │   └── index.ts         # TypeScript type definitions
 │   │   └── App.tsx
 │   ├── package.json
 │   ├── tailwind.config.js
@@ -123,12 +144,36 @@ edges
 extracted
 ├── id (UUID, PK)
 ├── node_id (FK → nodes)
-├── type (TEXT) ────────────────► "ipv4", "ipv6", "domain", "url", "hash_md5",
-│                                  "hash_sha1", "hash_sha256", "email",
-│                                  "threat_actor", "malware", "tool"
+├── type (TEXT) ────────────────► Entity types (see table below)
 ├── value (TEXT) ───────────────► The extracted value (normalized)
 ├── raw_value (TEXT) ───────────► Original value as found in content
 └── canonical_value (TEXT) ─────► For aliases: the canonical name (e.g., "Forest Blizzard")
+
+### Supported Entity Types
+
+| Internal Name | Display Name | Description |
+|--------------|--------------|-------------|
+| `ipv4` | IPv4 | IPv4 addresses (e.g., `192.168.1.1`) |
+| `ipv6` | IPv6 | IPv6 addresses |
+| `domain` | Domain | Domain names (e.g., `evil.com`) |
+| `url` | URL | Full URLs (e.g., `https://evil.com/payload`) |
+| `hash_md5` | MD5 | MD5 hashes (32 hex chars) |
+| `hash_sha1` | SHA1 | SHA1 hashes (40 hex chars) |
+| `hash_sha256` | SHA256 | SHA256 hashes (64 hex chars) |
+| `email` | Email | Email addresses |
+| `cve` | CVE | CVE identifiers (e.g., `CVE-2024-1234`) |
+| `filename` | Filename | Filenames with extensions (e.g., `malware.exe`) |
+| `file_path` | Filepath | Full file paths |
+| `threat_actor` | Threat Actor | Threat actor names (normalized to Microsoft naming) |
+| `malware` | Malware | Malware family names |
+| `tool` | Tool | Tool names (e.g., Cobalt Strike, Mimikatz) |
+| `campaign` | Campaign | Campaign names |
+| `registry_key` | Registry Key | Windows registry keys |
+| `mutex` | Mutex | Mutex names |
+| `user_agent` | User-Agent | HTTP User-Agent strings |
+| `asn` | ASN | Autonomous System Numbers |
+| `country` | Country | Country codes/names |
+| `mitre_attack` | ATT&CK | MITRE ATT&CK technique IDs |
 
 threat_actor_aliases (reference table)
 ├── alias (TEXT, PK) ───────────► e.g., "Fancy Bear", "APT28", "Sofacy"
