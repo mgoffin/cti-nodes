@@ -395,3 +395,71 @@ html.light .combobox-option-selected {
 html.dark .combobox-option-selected {
   background-color: #475569;
 }
+
+/* Tag suggestion banner styles */
+html.light .suggestion-banner {
+  background-color: #fffbeb; /* amber-50 */
+  border-color: #fde68a; /* amber-200 */
+}
+
+html.dark .suggestion-banner {
+  background-color: rgba(120, 53, 15, 0.2); /* amber-900/20 */
+  border-color: #92400e; /* amber-800 */
+}
+
+html.light .suggestion-confidence {
+  color: #92400e; /* amber-800 */
+}
+
+html.dark .suggestion-confidence {
+  color: #fbbf24; /* amber-400 */
+}
+
+html.light .suggestion-reason {
+  color: #78350f; /* amber-900 */
+}
+
+html.dark .suggestion-reason {
+  color: #fcd34d; /* amber-300 */
+}
+
+/* Suggestion action buttons */
+.suggestion-btn-accept {
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+html.light .suggestion-btn-accept {
+  color: #16a34a; /* green-600 */
+}
+html.light .suggestion-btn-accept:hover {
+  background-color: #dcfce7; /* green-100 */
+}
+
+html.dark .suggestion-btn-accept {
+  color: #4ade80; /* green-400 */
+}
+html.dark .suggestion-btn-accept:hover {
+  background-color: rgba(22, 163, 74, 0.3); /* green-900/30 */
+}
+
+.suggestion-btn-reject {
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+html.light .suggestion-btn-reject {
+  color: #dc2626; /* red-600 */
+}
+html.light .suggestion-btn-reject:hover {
+  background-color: #fee2e2; /* red-100 */
+}
+
+html.dark .suggestion-btn-reject {
+  color: #f87171; /* red-400 */
+}
+html.dark .suggestion-btn-reject:hover {
+  background-color: rgba(127, 29, 29, 0.3); /* red-900/30 */
+}

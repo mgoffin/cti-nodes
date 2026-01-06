@@ -12,6 +12,10 @@ import type {
   Extracted,
   ExtractedCreate,
   ExtractedUpdate,
+  EntitySuggestionsResponse,
+  RejectSuggestionRequest,
+  TagSuggestionsResponse,
+  RejectTagSuggestionRequest,
 } from '../types'
 
 const api = axios.create({
@@ -91,6 +95,15 @@ export const tagsApi = {
   delete: async (tagId: string): Promise<void> => {
     await api.delete(`/tags/${tagId}`)
   },
+
+  getNodeSuggestions: async (nodeId: string): Promise<TagSuggestionsResponse> => {
+    const { data } = await api.get(`/tags/suggestions/node/${nodeId}`)
+    return data
+  },
+
+  rejectSuggestion: async (request: RejectTagSuggestionRequest): Promise<void> => {
+    await api.post('/tags/suggestions/reject', request)
+  },
 }
 
 // Edges API
@@ -128,6 +141,15 @@ export const extractedApi = {
 
   delete: async (extractedId: string): Promise<void> => {
     await api.delete(`/extracted/${extractedId}`)
+  },
+
+  getSuggestions: async (nodeId: string): Promise<EntitySuggestionsResponse> => {
+    const { data } = await api.get(`/extracted/suggestions/${nodeId}`)
+    return data
+  },
+
+  rejectSuggestion: async (request: RejectSuggestionRequest): Promise<void> => {
+    await api.post('/extracted/suggestions/reject', request)
   },
 }
 

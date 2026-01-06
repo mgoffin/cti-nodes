@@ -57,6 +57,34 @@ CREATE TABLE IF NOT EXISTS threat_actor_aliases (
     canonical_name TEXT NOT NULL
 );
 
+-- Rejected suggestions table: tracks suggestions user has dismissed
+CREATE TABLE IF NOT EXISTS rejected_suggestions (
+    id TEXT PRIMARY KEY,
+    extracted_id TEXT NOT NULL,
+    suggestion_type TEXT NOT NULL,  -- 'refang', 'type_change'
+    suggested_value TEXT,           -- the suggested new value
+    suggested_type TEXT,            -- the suggested new type (for type_change)
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (extracted_id) REFERENCES extracted(id) ON DELETE CASCADE
+);
+
+-- Index for rejected suggestions lookup
+CREATE INDEX IF NOT EXISTS idx_rejected_extracted ON rejected_suggestions(extracted_id);
+
+-- Rejected tag suggestions table: tracks tag suggestions user has dismissed
+CREATE TABLE IF NOT EXISTS rejected_tag_suggestions (
+    id TEXT PRIMARY KEY,
+    node_id TEXT NOT NULL,
+    tag_name TEXT NOT NULL,
+    tag_value TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+);
+
+-- Index for rejected tag suggestions lookup
+CREATE INDEX IF NOT EXISTS idx_rejected_tag_node ON rejected_tag_suggestions(node_id);
+
 -- FTS5 virtual tables for full-text search
 CREATE VIRTUAL TABLE IF NOT EXISTS nodes_fts USING fts5(
     content,

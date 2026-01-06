@@ -1,11 +1,21 @@
 """Extracted entity API endpoints."""
 
 import uuid
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 
 from ..core.database import get_db
-from ..models import Extracted, ExtractedCreate, ExtractedUpdate
+from ..models import (
+    Extracted,
+    ExtractedCreate,
+    ExtractedUpdate,
+    EntitySuggestion,
+    EntitySuggestionsResponse,
+    RejectSuggestionRequest,
+)
 from ..extractors.defang import refang, is_defanged
+from ..linker import find_and_create_links
+from ..validators.entity_validator import validate_entity
 
 router = APIRouter()
 
@@ -26,6 +36,7 @@ DEFAULT_ENTITY_TYPES = [
     "campaign",
     "registry_key",
     "file_path",
+    "filename",
     "mutex",
     "user_agent",
     "asn",
@@ -95,6 +106,14 @@ async def add_extracted_to_node(
         )
         await db.commit()
 
+        # Re-link the node to find new connections based on the added entity
+        await db.execute(
+            "DELETE FROM edges WHERE (source_node_id = ? OR target_node_id = ?) AND edge_type != 'manual'",
+            (node_id, node_id),
+        )
+        await find_and_create_links(db, node_id)
+        await db.commit()
+
         return Extracted(
             id=entity_id,
             node_id=node_id,
@@ -162,6 +181,15 @@ async def update_extracted(
         )
         updated = await cursor.fetchone()
 
+        # Re-link the node to find new connections based on the updated entity
+        node_id = updated["node_id"]
+        await db.execute(
+            "DELETE FROM edges WHERE (source_node_id = ? OR target_node_id = ?) AND edge_type != 'manual'",
+            (node_id, node_id),
+        )
+        await find_and_create_links(db, node_id)
+        await db.commit()
+
         return Extracted(
             id=updated["id"],
             node_id=updated["node_id"],
@@ -176,15 +204,171 @@ async def update_extracted(
 async def delete_extracted(extracted_id: str) -> dict:
     """Delete an extracted entity."""
     async with get_db() as db:
-        # Verify entity exists
+        # Verify entity exists and get node_id for re-linking
         cursor = await db.execute(
-            "SELECT id FROM extracted WHERE id = ?",
+            "SELECT id, node_id FROM extracted WHERE id = ?",
             (extracted_id,)
         )
-        if not await cursor.fetchone():
+        row = await cursor.fetchone()
+        if not row:
             raise HTTPException(status_code=404, detail="Extracted entity not found")
+
+        node_id = row["node_id"]
 
         await db.execute("DELETE FROM extracted WHERE id = ?", (extracted_id,))
         await db.commit()
 
+        # Re-link the node to update connections after entity removal
+        await db.execute(
+            "DELETE FROM edges WHERE (source_node_id = ? OR target_node_id = ?) AND edge_type != 'manual'",
+            (node_id, node_id),
+        )
+        await find_and_create_links(db, node_id)
+        await db.commit()
+
         return {"message": "Extracted entity deleted"}
+
+
+@router.get("/suggestions/{node_id}", response_model=EntitySuggestionsResponse)
+async def get_entity_suggestions(node_id: str) -> EntitySuggestionsResponse:
+    """
+    Get validation suggestions for all extracted entities of a node.
+
+    Reviews entities for:
+    - Defanged values that should be refanged
+    - Type mismatches (e.g., SHA256 labeled as MD5)
+
+    Filters out suggestions that have been previously rejected.
+    """
+    async with get_db() as db:
+        # Verify node exists
+        cursor = await db.execute(
+            "SELECT id FROM nodes WHERE id = ?",
+            (node_id,)
+        )
+        if not await cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Node not found")
+
+        # Get all extracted entities for this node
+        cursor = await db.execute(
+            "SELECT * FROM extracted WHERE node_id = ?",
+            (node_id,)
+        )
+        entities = await cursor.fetchall()
+
+        # Get all rejected suggestions for these entities
+        entity_ids = [e["id"] for e in entities]
+        if entity_ids:
+            placeholders = ",".join("?" * len(entity_ids))
+            cursor = await db.execute(
+                f"""
+                SELECT extracted_id, suggestion_type, suggested_value, suggested_type
+                FROM rejected_suggestions
+                WHERE extracted_id IN ({placeholders})
+                """,
+                entity_ids
+            )
+            rejected_rows = await cursor.fetchall()
+            # Create a set of rejected suggestion keys
+            rejected = {
+                (r["extracted_id"], r["suggestion_type"], r["suggested_value"], r["suggested_type"])
+                for r in rejected_rows
+            }
+        else:
+            rejected = set()
+
+        # Validate each entity and collect suggestions
+        suggestions = []
+        for entity in entities:
+            suggestion = validate_entity(
+                extracted_id=entity["id"],
+                entity_type=entity["type"],
+                value=entity["value"],
+                raw_value=entity["raw_value"]
+            )
+
+            if suggestion:
+                # Check if this suggestion was rejected
+                key = (
+                    suggestion.extracted_id,
+                    suggestion.suggestion_type,
+                    suggestion.suggested_value,
+                    suggestion.suggested_type
+                )
+                if key not in rejected:
+                    suggestions.append(EntitySuggestion(
+                        extracted_id=suggestion.extracted_id,
+                        suggestion_type=suggestion.suggestion_type,
+                        current_value=suggestion.current_value,
+                        suggested_value=suggestion.suggested_value,
+                        current_type=suggestion.current_type,
+                        suggested_type=suggestion.suggested_type,
+                        reason=suggestion.reason,
+                    ))
+
+    return EntitySuggestionsResponse(
+        node_id=node_id,
+        suggestions=suggestions
+    )
+
+
+@router.post("/suggestions/reject")
+async def reject_suggestion(request: RejectSuggestionRequest) -> dict:
+    """
+    Reject a suggestion so it won't be shown again.
+
+    The rejection is persisted and tied to the specific extracted entity
+    and suggestion type/value.
+    """
+    async with get_db() as db:
+        # Verify entity exists
+        cursor = await db.execute(
+            "SELECT id FROM extracted WHERE id = ?",
+            (request.extracted_id,)
+        )
+        if not await cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Extracted entity not found")
+
+        # Check if already rejected
+        cursor = await db.execute(
+            """
+            SELECT id FROM rejected_suggestions
+            WHERE extracted_id = ?
+            AND suggestion_type = ?
+            AND (suggested_value = ? OR (suggested_value IS NULL AND ? IS NULL))
+            AND (suggested_type = ? OR (suggested_type IS NULL AND ? IS NULL))
+            """,
+            (
+                request.extracted_id,
+                request.suggestion_type,
+                request.suggested_value,
+                request.suggested_value,
+                request.suggested_type,
+                request.suggested_type,
+            )
+        )
+        if await cursor.fetchone():
+            return {"message": "Suggestion already rejected"}
+
+        # Insert rejection
+        rejection_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        await db.execute(
+            """
+            INSERT INTO rejected_suggestions
+            (id, extracted_id, suggestion_type, suggested_value, suggested_type, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                rejection_id,
+                request.extracted_id,
+                request.suggestion_type,
+                request.suggested_value,
+                request.suggested_type,
+                now,
+            )
+        )
+        await db.commit()
+
+    return {"message": "Suggestion rejected"}

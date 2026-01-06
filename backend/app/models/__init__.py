@@ -16,6 +16,12 @@ from .schemas import (
     SearchQuery,
     SearchResult,
     LinkNotification,
+    EntitySuggestion,
+    EntitySuggestionsResponse,
+    RejectSuggestionRequest,
+    TagSuggestionSchema,
+    TagSuggestionsResponse,
+    RejectTagSuggestionRequest,
 )
 
 __all__ = [
@@ -34,4 +40,10 @@ __all__ = [
     "SearchQuery",
     "SearchResult",
     "LinkNotification",
+    "EntitySuggestion",
+    "EntitySuggestionsResponse",
+    "RejectSuggestionRequest",
+    "TagSuggestionSchema",
+    "TagSuggestionsResponse",
+    "RejectTagSuggestionRequest",
 ]

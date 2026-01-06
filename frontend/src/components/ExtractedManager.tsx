@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { extractedApi } from '../api/client'
-import type { Extracted } from '../types'
+import type { Extracted, EntitySuggestion } from '../types'
 import ClickableExtracted from './ClickableExtracted'
 import Combobox from './Combobox'
 import { getEntityHighlightColor, getEntityBorderColor } from '../utils/entityColors'
+import { formatTypeName } from '../utils/formatters'
 import { useTheme } from '../hooks/useTheme'
 
 interface ExtractedManagerProps {
@@ -29,6 +30,19 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
     queryKey: ['extractedTypes'],
     queryFn: () => extractedApi.getTypes(),
   })
+
+  // Get entity suggestions
+  const { data: suggestionsData } = useQuery({
+    queryKey: ['entitySuggestions', nodeId],
+    queryFn: () => extractedApi.getSuggestions(nodeId),
+    enabled: !!nodeId && extracted.length > 0,
+  })
+
+  // Create a map of suggestions by extracted_id for easy lookup
+  const suggestionsByEntityId = suggestionsData?.suggestions.reduce((acc, s) => {
+    acc[s.extracted_id] = s
+    return acc
+  }, {} as Record<string, EntitySuggestion>) || {}
 
   // Group extracted by type, but preserve original index for color matching
   const groupedExtracted = extracted.reduce((acc, e, originalIndex) => {
@@ -77,6 +91,43 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
     },
   })
 
+  const rejectSuggestionMutation = useMutation({
+    mutationFn: (suggestion: EntitySuggestion) =>
+      extractedApi.rejectSuggestion({
+        extracted_id: suggestion.extracted_id,
+        suggestion_type: suggestion.suggestion_type,
+        suggested_value: suggestion.suggested_value,
+        suggested_type: suggestion.suggested_type,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entitySuggestions', nodeId] })
+      toast.success('Suggestion dismissed')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to dismiss suggestion')
+    },
+  })
+
+  const acceptSuggestionMutation = useMutation({
+    mutationFn: (suggestion: EntitySuggestion) => {
+      const updates: { type?: string; value?: string } = {}
+      if (suggestion.suggestion_type === 'refang' && suggestion.suggested_value) {
+        updates.value = suggestion.suggested_value
+      } else if (suggestion.suggestion_type === 'type_change' && suggestion.suggested_type) {
+        updates.type = suggestion.suggested_type
+      }
+      return extractedApi.update(suggestion.extracted_id, updates)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['entitySuggestions', nodeId] })
+      toast.success('Suggestion applied')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to apply suggestion')
+    },
+  })
+
   const handleStartEdit = (entity: Extracted) => {
     setEditingId(entity.id)
     setEditType(entity.type)
@@ -107,13 +158,6 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
     }
   }
 
-  const formatTypeName = (type: string) => {
-    return type
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-  }
-
   return (
     <div className="card">
       <div className="flex items-center justify-between mb-4">
@@ -139,17 +183,18 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
             </h3>
             <div className="space-y-2">
               {items.map(({ entity, originalIndex }) => (
-                <div key={entity.id} className="flex items-center gap-2">
-                  {/* Color indicator dot */}
-                  <span
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{
-                      backgroundColor: getEntityHighlightColor(originalIndex, isDark),
-                      border: `2px solid ${getEntityBorderColor(originalIndex, isDark)}`,
-                    }}
-                    title="Matches highlighted text in content"
-                  />
-                  {editingId === entity.id ? (
+                <div key={entity.id}>
+                  <div className="flex items-center gap-2">
+                    {/* Color indicator dot */}
+                    <span
+                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      style={{
+                        backgroundColor: getEntityHighlightColor(originalIndex, isDark),
+                        border: `2px solid ${getEntityBorderColor(originalIndex, isDark)}`,
+                      }}
+                      title="Matches highlighted text in content"
+                    />
+                    {editingId === entity.id ? (
                     // Edit mode
                     <div className="flex items-center gap-2 flex-1">
                       <Combobox
@@ -220,6 +265,16 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
                       </button>
                     </>
                   )}
+                  </div>
+                  {/* Suggestion banner */}
+                  {suggestionsByEntityId[entity.id] && !editingId && (
+                    <SuggestionBanner
+                      suggestion={suggestionsByEntityId[entity.id]}
+                      onAccept={() => acceptSuggestionMutation.mutate(suggestionsByEntityId[entity.id])}
+                      onReject={() => rejectSuggestionMutation.mutate(suggestionsByEntityId[entity.id])}
+                      isLoading={acceptSuggestionMutation.isPending || rejectSuggestionMutation.isPending}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -281,6 +336,64 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
         {extracted.length === 0 && !showAddForm && (
           <p className="text-sm theme-text-muted">No extracted entities</p>
         )}
+      </div>
+    </div>
+  )
+}
+
+// Suggestion banner component
+interface SuggestionBannerProps {
+  suggestion: EntitySuggestion
+  onAccept: () => void
+  onReject: () => void
+  isLoading: boolean
+}
+
+function SuggestionBanner({ suggestion, onAccept, onReject, isLoading }: SuggestionBannerProps) {
+  return (
+    <div className="w-full mt-1 p-2 rounded-md border suggestion-banner">
+      <div className="flex items-start gap-2">
+        {/* Warning icon */}
+        <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs suggestion-confidence">
+            {suggestion.suggestion_type === 'refang' ? (
+              <>
+                Suggested fix: <code className="px-1 py-0.5 rounded theme-bg-code font-mono text-xs">{suggestion.suggested_value}</code>
+              </>
+            ) : (
+              <>
+                Suggested type: <span className="font-medium">{formatTypeName(suggestion.suggested_type || '')}</span>
+              </>
+            )}
+          </p>
+          <p className="text-xs suggestion-reason mt-0.5">{suggestion.reason}</p>
+        </div>
+        {/* Action buttons */}
+        <div className="flex gap-1 flex-shrink-0">
+          <button
+            onClick={onAccept}
+            disabled={isLoading}
+            className="suggestion-btn-accept"
+            title="Accept suggestion"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+          <button
+            onClick={onReject}
+            disabled={isLoading}
+            className="suggestion-btn-reject"
+            title="Dismiss suggestion"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   )

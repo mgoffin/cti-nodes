@@ -177,6 +177,65 @@ class LinkNotification(BaseModel):
     message: str
 
 
+# --- Entity Suggestion Schemas ---
+
+
+class EntitySuggestion(BaseModel):
+    """A suggested correction for an extracted entity."""
+
+    extracted_id: str
+    suggestion_type: str  # 'refang', 'type_change'
+    current_value: str
+    suggested_value: Optional[str] = None
+    current_type: str = ""
+    suggested_type: Optional[str] = None
+    reason: str = ""
+
+
+class EntitySuggestionsResponse(BaseModel):
+    """Response containing entity suggestions for a node."""
+
+    node_id: str
+    suggestions: list[EntitySuggestion]
+
+
+class RejectSuggestionRequest(BaseModel):
+    """Request to reject a suggestion."""
+
+    extracted_id: str
+    suggestion_type: str
+    suggested_value: Optional[str] = None
+    suggested_type: Optional[str] = None
+
+
+# --- Tag Suggestion Schemas ---
+
+
+class TagSuggestionSchema(BaseModel):
+    """A suggested tag for a node."""
+
+    tag_name: str
+    tag_value: str
+    reason: str
+    confidence: float = 0.8
+
+
+class TagSuggestionsResponse(BaseModel):
+    """Response containing tag suggestions for a node."""
+
+    node_id: str
+    suggestions: list[TagSuggestionSchema]
+
+
+class RejectTagSuggestionRequest(BaseModel):
+    """Request to reject a tag suggestion."""
+
+    node_id: str
+    tag_name: str
+    tag_value: str
+    reason: str
+
+
 # Fix forward references
 Node.model_rebuild()
 NodeWithRelations.model_rebuild()

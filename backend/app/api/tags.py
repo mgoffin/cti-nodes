@@ -1,10 +1,19 @@
 """Tag API endpoints."""
 
 import uuid
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 
 from ..core.database import get_db
-from ..models import Tag, TagCreate, TagUpdate
+from ..models import (
+    Tag,
+    TagCreate,
+    TagUpdate,
+    TagSuggestionSchema,
+    TagSuggestionsResponse,
+    RejectTagSuggestionRequest,
+)
+from ..validators.tag_suggester import get_tag_suggestions
 
 router = APIRouter()
 
@@ -13,7 +22,7 @@ SYSTEM_TAGS = ["source", "datetime"]
 
 
 @router.get("/suggestions")
-async def get_tag_suggestions(prefix: str = "") -> dict[str, list[str]]:
+async def get_tag_autocomplete_suggestions(prefix: str = "") -> dict[str, list[str]]:
     """Get tag name and value suggestions based on existing tags."""
     async with get_db() as db:
         # Get unique tag names
@@ -199,3 +208,126 @@ async def delete_tag(tag_id: str) -> dict:
         await db.commit()
 
         return {"message": "Tag deleted"}
+
+
+@router.get("/suggestions/node/{node_id}", response_model=TagSuggestionsResponse)
+async def get_tag_suggestions_for_node(node_id: str) -> TagSuggestionsResponse:
+    """
+    Get tag suggestions for a node based on its content and extracted entities.
+
+    Analyzes the node's content for patterns that indicate relevant tags
+    (e.g., report type, severity, sector, region) and suggests tags based
+    on extracted entities (e.g., malware, threat actors, CVEs).
+
+    Filters out suggestions that have been previously rejected.
+    """
+    async with get_db() as db:
+        # Get node content
+        cursor = await db.execute(
+            "SELECT id, content FROM nodes WHERE id = ?",
+            (node_id,)
+        )
+        node = await cursor.fetchone()
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+
+        # Get existing tags
+        cursor = await db.execute(
+            "SELECT name, value FROM tags WHERE node_id = ?",
+            (node_id,)
+        )
+        tag_rows = await cursor.fetchall()
+        existing_tags = [{"name": r["name"], "value": r["value"]} for r in tag_rows]
+
+        # Get extracted entities
+        cursor = await db.execute(
+            "SELECT type, value FROM extracted WHERE node_id = ?",
+            (node_id,)
+        )
+        extracted_rows = await cursor.fetchall()
+        extracted = [{"type": r["type"], "value": r["value"]} for r in extracted_rows]
+
+        # Get rejected suggestions for this node
+        cursor = await db.execute(
+            "SELECT tag_name, tag_value, reason FROM rejected_tag_suggestions WHERE node_id = ?",
+            (node_id,)
+        )
+        rejected_rows = await cursor.fetchall()
+        rejected = {
+            (r["tag_name"].lower(), r["tag_value"].lower(), r["reason"])
+            for r in rejected_rows
+        }
+
+        # Get suggestions
+        raw_suggestions = get_tag_suggestions(node["content"], extracted, existing_tags)
+
+        # Filter out rejected suggestions
+        suggestions = []
+        for s in raw_suggestions:
+            key = (s.tag_name.lower(), s.tag_value.lower(), s.reason)
+            if key not in rejected:
+                suggestions.append(TagSuggestionSchema(
+                    tag_name=s.tag_name,
+                    tag_value=s.tag_value,
+                    reason=s.reason,
+                    confidence=s.confidence,
+                ))
+
+    return TagSuggestionsResponse(
+        node_id=node_id,
+        suggestions=suggestions
+    )
+
+
+@router.post("/suggestions/reject")
+async def reject_tag_suggestion(request: RejectTagSuggestionRequest) -> dict:
+    """
+    Reject a tag suggestion so it won't be shown again for this node.
+
+    The rejection is persisted and tied to the specific node and suggestion.
+    """
+    async with get_db() as db:
+        # Verify node exists
+        cursor = await db.execute(
+            "SELECT id FROM nodes WHERE id = ?",
+            (request.node_id,)
+        )
+        if not await cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Node not found")
+
+        # Check if already rejected
+        cursor = await db.execute(
+            """
+            SELECT id FROM rejected_tag_suggestions
+            WHERE node_id = ?
+            AND tag_name = ?
+            AND tag_value = ?
+            AND reason = ?
+            """,
+            (request.node_id, request.tag_name, request.tag_value, request.reason)
+        )
+        if await cursor.fetchone():
+            return {"message": "Suggestion already rejected"}
+
+        # Insert rejection
+        rejection_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        await db.execute(
+            """
+            INSERT INTO rejected_tag_suggestions
+            (id, node_id, tag_name, tag_value, reason, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                rejection_id,
+                request.node_id,
+                request.tag_name,
+                request.tag_value,
+                request.reason,
+                now,
+            )
+        )
+        await db.commit()
+
+    return {"message": "Suggestion rejected"}

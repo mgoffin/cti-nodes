@@ -106,10 +106,11 @@ async def get_node(node_id: str) -> NodeWithRelations:
     return node
 
 
-@router.put("/{node_id}", response_model=Node)
-async def update_node(node_id: str, node_data: NodeUpdate) -> Node:
-    """Update a node's content and/or tags."""
+@router.put("/{node_id}", response_model=NodeWithRelations)
+async def update_node(node_id: str, node_data: NodeUpdate) -> NodeWithRelations:
+    """Update a node's content and/or tags, re-extract entities, and re-link."""
     now = datetime.now(timezone.utc).isoformat()
+    needs_relinking = False
 
     async with get_db() as db:
         # Check node exists
@@ -134,6 +135,7 @@ async def update_node(node_id: str, node_data: NodeUpdate) -> Node:
                     "INSERT INTO extracted (id, node_id, type, value, raw_value, canonical_value) VALUES (?, ?, ?, ?, ?, ?)",
                     (ext_id, node_id, ext["type"], ext["value"], ext["raw_value"], ext.get("canonical_value")),
                 )
+            needs_relinking = True
 
         # Update tags if provided
         if node_data.tags is not None:
@@ -149,21 +151,27 @@ async def update_node(node_id: str, node_data: NodeUpdate) -> Node:
                     "INSERT INTO tags (id, node_id, name, value) VALUES (?, ?, ?, ?)",
                     (tag_id, node_id, tag.name, tag.value),
                 )
+            needs_relinking = True
 
         await db.commit()
 
-        # Fetch updated node
-        tags = await get_tags_for_node(db, node_id)
-        cursor = await db.execute("SELECT * FROM nodes WHERE id = ?", (node_id,))
-        row = await cursor.fetchone()
+        # Re-link if content or tags changed
+        if needs_relinking:
+            # Delete old auto-generated edges (keep manual edges)
+            await db.execute(
+                "DELETE FROM edges WHERE (source_node_id = ? OR target_node_id = ?) AND edge_type != 'manual'",
+                (node_id, node_id),
+            )
+            await db.commit()
 
-    return Node(
-        id=row["id"],
-        content=row["content"],
-        created_at=datetime.fromisoformat(row["created_at"]),
-        updated_at=datetime.fromisoformat(row["updated_at"]),
-        tags=tags,
-    )
+            # Find and create new links
+            await find_and_create_links(db, node_id)
+            await db.commit()
+
+        # Fetch updated node with relations
+        node = await get_node_with_relations(db, node_id)
+
+    return node
 
 
 @router.delete("/{node_id}", status_code=status.HTTP_204_NO_CONTENT)

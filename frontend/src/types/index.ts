@@ -78,3 +78,44 @@ export interface ExtractedUpdate {
   raw_value?: string
   canonical_value?: string
 }
+
+export interface EntitySuggestion {
+  extracted_id: string
+  suggestion_type: 'refang' | 'type_change'
+  current_value: string
+  suggested_value: string | null
+  current_type: string
+  suggested_type: string | null
+  reason: string
+}
+
+export interface EntitySuggestionsResponse {
+  node_id: string
+  suggestions: EntitySuggestion[]
+}
+
+export interface RejectSuggestionRequest {
+  extracted_id: string
+  suggestion_type: string
+  suggested_value?: string | null
+  suggested_type?: string | null
+}
+
+export interface TagSuggestion {
+  tag_name: string
+  tag_value: string
+  reason: string
+  confidence: number
+}
+
+export interface TagSuggestionsResponse {
+  node_id: string
+  suggestions: TagSuggestion[]
+}
+
+export interface RejectTagSuggestionRequest {
+  node_id: string
+  tag_name: string
+  tag_value: string
+  reason: string
+}
