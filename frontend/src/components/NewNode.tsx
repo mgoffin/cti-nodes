@@ -94,6 +94,24 @@ export default function NewNode() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Source */}
+        <div className="card">
+          <label className="block text-sm font-medium theme-text-primary mb-2">
+            Source <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            className="input w-full px-3"
+            placeholder="URL, filepath, person's name, etc."
+            autoFocus
+          />
+          <p className="text-xs theme-text-muted mt-2">
+            Where did this information come from?
+          </p>
+        </div>
+
         {/* Content */}
         <div className="card">
           <label className="block text-sm font-medium theme-text-primary mb-2">
@@ -111,27 +129,9 @@ Examples:
 - Notes from a conversation
 - Snippet from a blog post
 - List of suspicious domains"
-            autoFocus
           />
           <p className="text-xs theme-text-muted mt-2">
             IOCs (IPs, domains, hashes) and threat actors will be automatically extracted.
-          </p>
-        </div>
-
-        {/* Source */}
-        <div className="card">
-          <label className="block text-sm font-medium theme-text-primary mb-2">
-            Source <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            className="input w-full px-3"
-            placeholder="URL, filepath, person's name, etc."
-          />
-          <p className="text-xs theme-text-muted mt-2">
-            Where did this information come from?
           </p>
         </div>
 

@@ -231,7 +231,7 @@ export default function GraphView({ nodes, centerNodeId, initialDepth = 1 }: Gra
         'font-weight': '500',
         'color': isDark ? '#e2e8f0' : '#334155',
         'text-wrap': 'wrap',
-        'text-max-width': '100px',
+        'text-max-width': '60px',
         'text-valign': 'bottom',
         'text-halign': 'center',
         'text-margin-y': '4px',
@@ -261,7 +261,7 @@ export default function GraphView({ nodes, centerNodeId, initialDepth = 1 }: Gra
         'font-weight': '400',
         'color': isDark ? '#e2e8f0' : '#334155',
         'text-wrap': 'wrap',
-        'text-max-width': '80px',
+        'text-max-width': '50px',
         'text-valign': 'bottom',
         'text-halign': 'center',
         'text-margin-y': '3px',
@@ -282,7 +282,7 @@ export default function GraphView({ nodes, centerNodeId, initialDepth = 1 }: Gra
         'font-weight': '400',
         'color': isDark ? '#e2e8f0' : '#334155',
         'text-wrap': 'wrap',
-        'text-max-width': '80px',
+        'text-max-width': '50px',
         'text-valign': 'bottom',
         'text-halign': 'center',
         'text-margin-y': '3px',
@@ -385,49 +385,49 @@ export default function GraphView({ nodes, centerNodeId, initialDepth = 1 }: Gra
         cy.layout({
           name: 'cose',
           animate: true,
-          animationDuration: 300,
-          nodeRepulsion: () => 6000,
-          idealEdgeLength: () => 50,
-          edgeElasticity: () => 100,
+          animationDuration: 250,
+          nodeRepulsion: () => 12000,
+          idealEdgeLength: () => 60,
+          edgeElasticity: () => 120,
           nestingFactor: 0.1,
-          gravity: 0.25,
-          numIter: 500,
+          gravity: 0.2,
+          numIter: 400,
           initialTemp: 100,
           coolingFactor: 0.95,
           minTemp: 1.0,
           fit: false, // Don't re-fit, keep current view
+          nodeOverlap: 20, // Minimum space between nodes
         } as any).run()
 
         // Unlock the node after layout completes
         setTimeout(() => {
           draggedNode.unlock()
-        }, 350)
+        }, 280)
       })
 
-      // Run initial layout with settings optimized for entity/tag nodes
+      // Run initial layout with settings optimized for preventing overlaps
       cy.layout({
         name: 'cose',
         animate: true,
-        animationDuration: 500,
-        nodeRepulsion: () => 8000,
-        idealEdgeLength: () => 50,
-        edgeElasticity: () => 100,
+        animationDuration: 400,
+        nodeRepulsion: () => 15000,
+        idealEdgeLength: () => 70,
+        edgeElasticity: () => 120,
         nestingFactor: 0.1,
-        gravity: 0.25,
-        numIter: 1000,
+        gravity: 0.2,
+        numIter: 800,
         initialTemp: 200,
         coolingFactor: 0.95,
         minTemp: 1.0,
+        nodeOverlap: 20, // Minimum space between nodes
+        fit: true, // Auto-fit to viewport
+        padding: 80, // Padding around the graph
       } as any).run()
 
-      // After layout, zoom out to see everything
+      // Center after layout completes
       setTimeout(() => {
-        cy.fit(undefined, 50) // 50px padding
-        // Zoom out a bit more for a better overview
-        const currentZoom = cy.zoom()
-        cy.zoom(currentZoom * 0.8)
         cy.center()
-      }, 600)
+      }, 450)
     }
   }, [elements.length, depth])
 

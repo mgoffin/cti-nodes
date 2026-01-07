@@ -1,0 +1,55 @@
+# Development Dockerfile with hot-reload support
+# This builds dependencies but mounts source code as volumes
+
+FROM node:22-alpine AS frontend-deps
+
+WORKDIR /app/frontend
+
+# Install frontend dependencies
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci --silent
+
+# =============================================================================
+# Main development image
+# =============================================================================
+FROM python:3.14-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    curl \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install Python dependencies
+COPY backend/requirements.txt ./backend/
+RUN pip install --no-cache-dir -r backend/requirements.txt
+
+# Copy node_modules from frontend-deps stage
+COPY --from=frontend-deps /app/frontend/node_modules ./frontend/node_modules
+
+# Create data directory
+RUN mkdir -p /app/data && chmod 755 /app/data
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    NODES_DATABASE_PATH=/app/data/nodes.db \
+    NODES_HOST=0.0.0.0 \
+    NODES_PORT=8000 \
+    NODES_DEBUG=true
+
+# Expose ports
+EXPOSE 8000 5173
+
+# Source code will be mounted as volumes
+# Command will be specified in docker-compose.dev.yml

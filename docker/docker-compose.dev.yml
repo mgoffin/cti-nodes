@@ -1,0 +1,41 @@
+services:
+  nodes-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    container_name: nodes-dev
+    ports:
+      - "8000:8000"
+      - "5173:5173"
+    volumes:
+      # Mount source code for hot-reload
+      - ../backend:/app/backend
+      - ../frontend/src:/app/frontend/src
+      - ../frontend/public:/app/frontend/public
+      - ../frontend/vite.config.ts:/app/frontend/vite.config.ts
+      - ../frontend/tsconfig.json:/app/frontend/tsconfig.json
+      - ../frontend/tsconfig.node.json:/app/frontend/tsconfig.node.json
+      - ../frontend/index.html:/app/frontend/index.html
+      - ../frontend/package.json:/app/frontend/package.json
+      - ../frontend/tailwind.config.js:/app/frontend/tailwind.config.js
+      - ../frontend/eslint.config.js:/app/frontend/eslint.config.js
+      # Persistent data
+      - nodes-data:/app/data
+      # Exclude node_modules and Python cache (use container versions)
+      - /app/frontend/node_modules
+      - /app/backend/__pycache__
+    environment:
+      - NODES_DEBUG=true
+      - NODES_DATABASE_PATH=/app/data/nodes.db
+      - NODES_HOST=0.0.0.0
+      - NODES_PORT=8000
+    restart: unless-stopped
+    command: >
+      sh -c "
+        cd /app/frontend && npm run dev &
+        cd /app/backend && python -m app.main
+      "
+
+volumes:
+  nodes-data:
+    name: nodes-data

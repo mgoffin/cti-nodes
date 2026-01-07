@@ -105,6 +105,12 @@ export default function SearchBar({ onSearch, placeholder = 'Search nodes...' }:
                   <code className="text-xs theme-bg-code px-1.5 py-0.5 rounded theme-text-primary">tag-value="*cobalt*"</code>
                   <p className="text-xs theme-text-muted mt-1">Search all tag values (supports wildcards)</p>
                 </div>
+
+                <div>
+                  <p className="font-medium theme-text-primary">Author Search</p>
+                  <code className="text-xs theme-bg-code px-1.5 py-0.5 rounded theme-text-primary">author="john@example.com"</code>
+                  <p className="text-xs theme-text-muted mt-1">Find nodes created by a specific author</p>
+                </div>
               </div>
 
               <button

@@ -57,6 +57,8 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
       extractedApi.addToNode(nodeId, entity),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['entitySuggestions', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['tagNodeSuggestions', nodeId] })
       toast.success('Entity added')
       setNewType('')
       setNewValue('')
@@ -72,6 +74,8 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
       extractedApi.update(id, { type, value }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['entitySuggestions', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['tagNodeSuggestions', nodeId] })
       toast.success('Entity updated')
       setEditingId(null)
     },
@@ -84,6 +88,8 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
     mutationFn: (id: string) => extractedApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['entitySuggestions', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['tagNodeSuggestions', nodeId] })
       toast.success('Entity deleted')
     },
     onError: (error: any) => {

@@ -8,11 +8,17 @@ interface SelectionState {
 export default function useTextSelection(containerRef: RefObject<HTMLElement | null>) {
   const [selection, setSelection] = useState<SelectionState>({ text: '', rect: null })
   const isInteractingRef = useRef(false)
+  const timeoutRef = useRef<number | null>(null)
 
   const handleSelectionChange = useCallback(() => {
     // Don't clear selection if we're interacting with the popover
     if (isInteractingRef.current) {
       return
+    }
+
+    // Clear any pending timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
     }
 
     const sel = window.getSelection()
@@ -31,21 +37,31 @@ export default function useTextSelection(containerRef: RefObject<HTMLElement | n
       return
     }
 
-    if (text.length === 0) {
+    // Require at least 2 characters to show the popover
+    if (text.length < 2) {
       setSelection({ text: '', rect: null })
       return
     }
 
-    const rect = range.getBoundingClientRect()
-    setSelection({ text, rect })
+    // Debounce the popover appearance by 150ms to prevent flashing while dragging
+    timeoutRef.current = window.setTimeout(() => {
+      const rect = range.getBoundingClientRect()
+      setSelection({ text, rect })
+    }, 150)
   }, [containerRef])
 
   const clearSelection = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
     window.getSelection()?.removeAllRanges()
     setSelection({ text: '', rect: null })
   }, [])
 
   useEffect(() => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
     document.addEventListener('selectionchange', handleSelectionChange)
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange)

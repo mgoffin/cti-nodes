@@ -131,6 +131,7 @@ class Node(NodeBase):
     id: str
     created_at: datetime
     updated_at: datetime
+    author: Optional[str] = None
     tags: list[Tag] = []
     extracted: list["Extracted"] = []
 

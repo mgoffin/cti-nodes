@@ -13,6 +13,12 @@ pydantic-settings>=2.6.0
 # Utilities
 python-dateutil>=2.9.0
 
+# Authentication (optional - only needed if NODES_AUTH_ENABLED=true)
+PyJWT>=2.8.0
+
+# Rate limiting (optional - only needed if auth enabled)
+slowapi>=0.1.9
+
 # Testing
 pytest>=8.3.0
 pytest-asyncio>=0.24.0

@@ -16,6 +16,12 @@ import type {
   RejectSuggestionRequest,
   TagSuggestionsResponse,
   RejectTagSuggestionRequest,
+  User,
+  Session,
+  AuthConfig,
+  UserProfile,
+  UserUpdate,
+  ProfileUpdate,
 } from '../types'
 
 const api = axios.create({
@@ -23,7 +29,21 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Include cookies in requests
 })
+
+// Response interceptor to handle 401s
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Redirect to login if auth is enabled
+      // The AuthContext will handle checking if auth is enabled
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
 
 // Nodes API
 export const nodesApi = {
@@ -151,6 +171,78 @@ export const extractedApi = {
   rejectSuggestion: async (request: RejectSuggestionRequest): Promise<void> => {
     await api.post('/extracted/suggestions/reject', request)
   },
+}
+
+// Auth API
+export const authApi = {
+  getConfig: async (): Promise<AuthConfig> => {
+    const { data } = await api.get('/auth/config')
+    return data
+  },
+
+  getCurrentUser: async (): Promise<User> => {
+    const { data } = await api.get('/auth/me')
+    return data
+  },
+
+  logout: async (): Promise<void> => {
+    await api.post('/auth/logout')
+  },
+
+  getSessions: async (): Promise<Session[]> => {
+    const { data } = await api.get('/auth/sessions')
+    return data
+  },
+
+  revokeSession: async (sessionId: string): Promise<void> => {
+    await api.delete(`/auth/sessions/${sessionId}`)
+  },
+}
+
+// Users API
+export const usersApi = {
+  list: async (): Promise<User[]> => {
+    const { data } = await api.get('/users')
+    return data
+  },
+
+  get: async (userId: string): Promise<User> => {
+    const { data } = await api.get(`/users/${userId}`)
+    return data
+  },
+
+  update: async (userId: string, updates: UserUpdate): Promise<User> => {
+    const { data } = await api.put(`/users/${userId}`, updates)
+    return data
+  },
+
+  deactivate: async (userId: string): Promise<void> => {
+    await api.post(`/users/${userId}/deactivate`)
+  },
+
+  activate: async (userId: string): Promise<void> => {
+    await api.post(`/users/${userId}/activate`)
+  },
+
+  getProfile: async (): Promise<UserProfile> => {
+    const { data } = await api.get('/users/me/profile')
+    return data
+  },
+
+  updateProfile: async (updates: ProfileUpdate): Promise<UserProfile> => {
+    const { data } = await api.put('/users/me/profile', updates)
+    return data
+  },
+}
+
+export const apiClient = {
+  nodes: nodesApi,
+  search: searchApi,
+  tags: tagsApi,
+  edges: edgesApi,
+  extracted: extractedApi,
+  auth: authApi,
+  users: usersApi,
 }
 
 export default api

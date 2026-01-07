@@ -2,9 +2,11 @@
 
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from ..core.database import get_db
+from ..core.dependencies import get_current_user, can_modify_resource, User
+from ..core.audit import log_audit
 from ..models import (
     Extracted,
     ExtractedCreate,
@@ -46,7 +48,9 @@ DEFAULT_ENTITY_TYPES = [
 
 
 @router.get("/types", response_model=list[str])
-async def get_entity_types() -> list[str]:
+async def get_entity_types(
+    current_user: User = Depends(get_current_user),
+) -> list[str]:
     """Get list of entity types (defaults + any custom types from database)."""
     async with get_db() as db:
         # Get all unique types from the database
@@ -64,17 +68,23 @@ async def get_entity_types() -> list[str]:
 @router.post("/node/{node_id}", response_model=Extracted)
 async def add_extracted_to_node(
     node_id: str,
-    entity: ExtractedCreate
+    entity: ExtractedCreate,
+    current_user: User = Depends(get_current_user),
 ) -> Extracted:
     """Add an extracted entity to a node."""
     async with get_db() as db:
-        # Verify node exists
+        # Verify node exists and check ownership
         cursor = await db.execute(
-            "SELECT id FROM nodes WHERE id = ?",
+            "SELECT id, author FROM nodes WHERE id = ?",
             (node_id,)
         )
-        if not await cursor.fetchone():
+        node = await cursor.fetchone()
+        if not node:
             raise HTTPException(status_code=404, detail="Node not found")
+
+        # Check ownership (extracted entities inherit from their parent node)
+        if not can_modify_resource(current_user, node["author"]):
+            raise HTTPException(status_code=403, detail="Not authorized to modify entities on this node")
 
         # Create the extracted entity
         entity_id = str(uuid.uuid4())
@@ -92,8 +102,8 @@ async def add_extracted_to_node(
         await db.execute(
             """
             INSERT INTO extracted
-            (id, node_id, type, value, raw_value, canonical_value)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (id, node_id, type, value, raw_value, canonical_value, author)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 entity_id,
@@ -101,10 +111,21 @@ async def add_extracted_to_node(
                 entity.type,
                 fanged_value,
                 raw_value,
-                entity.canonical_value
+                entity.canonical_value,
+                current_user.username,
             ),
         )
         await db.commit()
+
+        # Audit log
+        await log_audit(
+            db,
+            username=current_user.username,
+            action="create",
+            resource_type="extracted",
+            resource_id=entity_id,
+            details={"node_id": node_id, "type": entity.type, "value": fanged_value},
+        )
 
         # Re-link the node to find new connections based on the added entity
         await db.execute(
@@ -127,18 +148,23 @@ async def add_extracted_to_node(
 @router.put("/{extracted_id}", response_model=Extracted)
 async def update_extracted(
     extracted_id: str,
-    updates: ExtractedUpdate
+    updates: ExtractedUpdate,
+    current_user: User = Depends(get_current_user),
 ) -> Extracted:
     """Update an extracted entity."""
     async with get_db() as db:
-        # Get existing entity
+        # Get existing entity and its parent node
         cursor = await db.execute(
-            "SELECT * FROM extracted WHERE id = ?",
+            "SELECT e.*, n.author as node_author FROM extracted e JOIN nodes n ON e.node_id = n.id WHERE e.id = ?",
             (extracted_id,)
         )
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Extracted entity not found")
+
+        # Check ownership (extracted entities inherit from their parent node)
+        if not can_modify_resource(current_user, row["node_author"]):
+            raise HTTPException(status_code=403, detail="Not authorized to modify this entity")
 
         # Build update query
         update_fields = []
@@ -174,6 +200,20 @@ async def update_extracted(
         )
         await db.commit()
 
+        # Audit log
+        update_details = {}
+        if updates.type: update_details["type"] = updates.type
+        if updates.value: update_details["value"] = updates.value
+        if updates.canonical_value: update_details["canonical_value"] = updates.canonical_value
+        await log_audit(
+            db,
+            username=current_user.username,
+            action="update",
+            resource_type="extracted",
+            resource_id=extracted_id,
+            details=update_details,
+        )
+
         # Fetch updated entity
         cursor = await db.execute(
             "SELECT * FROM extracted WHERE id = ?",
@@ -201,22 +241,39 @@ async def update_extracted(
 
 
 @router.delete("/{extracted_id}")
-async def delete_extracted(extracted_id: str) -> dict:
+async def delete_extracted(
+    extracted_id: str,
+    current_user: User = Depends(get_current_user),
+) -> dict:
     """Delete an extracted entity."""
     async with get_db() as db:
-        # Verify entity exists and get node_id for re-linking
+        # Verify entity exists, get node_id for re-linking, and check ownership
         cursor = await db.execute(
-            "SELECT id, node_id FROM extracted WHERE id = ?",
+            "SELECT e.*, n.author as node_author FROM extracted e JOIN nodes n ON e.node_id = n.id WHERE e.id = ?",
             (extracted_id,)
         )
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Extracted entity not found")
 
+        # Check ownership (extracted entities inherit from their parent node)
+        if not can_modify_resource(current_user, row["node_author"]):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this entity")
+
         node_id = row["node_id"]
 
         await db.execute("DELETE FROM extracted WHERE id = ?", (extracted_id,))
         await db.commit()
+
+        # Audit log
+        await log_audit(
+            db,
+            username=current_user.username,
+            action="delete",
+            resource_type="extracted",
+            resource_id=extracted_id,
+            details={"node_id": node_id, "type": row["type"], "value": row["value"]},
+        )
 
         # Re-link the node to update connections after entity removal
         await db.execute(
@@ -230,7 +287,10 @@ async def delete_extracted(extracted_id: str) -> dict:
 
 
 @router.get("/suggestions/{node_id}", response_model=EntitySuggestionsResponse)
-async def get_entity_suggestions(node_id: str) -> EntitySuggestionsResponse:
+async def get_entity_suggestions(
+    node_id: str,
+    current_user: User = Depends(get_current_user),
+) -> EntitySuggestionsResponse:
     """
     Get validation suggestions for all extracted entities of a node.
 
@@ -313,7 +373,10 @@ async def get_entity_suggestions(node_id: str) -> EntitySuggestionsResponse:
 
 
 @router.post("/suggestions/reject")
-async def reject_suggestion(request: RejectSuggestionRequest) -> dict:
+async def reject_suggestion(
+    request: RejectSuggestionRequest,
+    current_user: User = Depends(get_current_user),
+) -> dict:
     """
     Reject a suggestion so it won't be shown again.
 

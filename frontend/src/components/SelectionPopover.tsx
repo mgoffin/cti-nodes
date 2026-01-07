@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { extractedApi } from '../api/client'
 import Combobox from './Combobox'
+import { formatTypeName } from '../utils/formatters'
 
 interface SelectionPopoverProps {
   nodeId: string
@@ -51,6 +52,8 @@ export default function SelectionPopover({
       extractedApi.addToNode(nodeId, entity),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['entitySuggestions', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['tagNodeSuggestions', nodeId] })
       toast.success('Entity added')
       handleClose()
     },
@@ -63,13 +66,6 @@ export default function SelectionPopover({
     if (selectedType.trim() && textToAdd) {
       addMutation.mutate({ type: selectedType.trim(), value: textToAdd })
     }
-  }
-
-  const formatTypeName = (type: string) => {
-    return type
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
   }
 
   // Position the popover above the selection

@@ -1,10 +1,19 @@
 import { Outlet, Link, useNavigate } from 'react-router'
+import { useState } from 'react'
 import SearchBar from './SearchBar'
 import { useTheme } from '../hooks/useTheme'
+import { useAuth } from '../contexts/AuthContext'
+import { UserMenu } from './UserMenu'
+import { UserProfile } from './UserProfile'
+import { SessionManager } from './SessionManager'
+import { SSOStatusBanner } from './SSOStatusBanner'
 
 export default function Layout() {
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
+  const { authConfig, isAuthenticated } = useAuth()
+  const [showProfile, setShowProfile] = useState(false)
+  const [showSessions, setShowSessions] = useState(false)
 
   const handleSearch = (query: string) => {
     navigate(`/?q=${encodeURIComponent(query)}`)
@@ -12,6 +21,9 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen transition-colors duration-200">
+      {/* SSO Status Banner */}
+      <SSOStatusBanner />
+
       {/* Header */}
       <header className="header border-b sticky top-0 z-50 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -65,6 +77,14 @@ export default function Layout() {
                 </svg>
                 <span>New Node</span>
               </Link>
+
+              {/* User Menu (only if auth is enabled and user is logged in) */}
+              {authConfig?.auth_enabled && isAuthenticated && (
+                <UserMenu
+                  onOpenProfile={() => setShowProfile(true)}
+                  onOpenSessions={() => setShowSessions(true)}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -74,6 +94,10 @@ export default function Layout() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
+
+      {/* Modals */}
+      {showProfile && <UserProfile onClose={() => setShowProfile(false)} />}
+      {showSessions && <SessionManager onClose={() => setShowSessions(false)} />}
     </div>
   )
 }

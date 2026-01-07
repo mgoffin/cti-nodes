@@ -31,6 +31,7 @@ export interface Node {
   updated_at: string
   tags: Tag[]
   extracted: Extracted[]
+  author?: string // Optional for backward compatibility
 }
 
 export interface NodeWithRelations extends Node {
@@ -118,4 +119,55 @@ export interface RejectTagSuggestionRequest {
   tag_name: string
   tag_value: string
   reason: string
+}
+
+// Auth types
+export type UserRole = 'administrator' | 'analyst' | 'viewer'
+
+export interface User {
+  id: string
+  username: string
+  email: string | null
+  role: UserRole
+  is_active: boolean
+  created_at: string
+  last_login: string | null
+}
+
+export interface Session {
+  id: string
+  user_id: string
+  created_at: string
+  last_accessed: string
+  ip_address: string | null
+  user_agent: string | null
+}
+
+export interface AuthConfig {
+  auth_enabled: boolean
+  sso_provider: string | null
+  sso_display_name: string | null
+}
+
+export interface AuthState {
+  user: User | null
+  isAuthenticated: boolean
+  isLoading: boolean
+}
+
+export interface UserProfile {
+  display_name_override: string | null
+  avatar_url: string | null
+  theme_preference: 'light' | 'dark' | 'system' | null
+}
+
+export interface UserUpdate {
+  role?: UserRole
+  is_active?: boolean
+}
+
+export interface ProfileUpdate {
+  display_name_override?: string | null
+  avatar_url?: string | null
+  theme_preference?: 'light' | 'dark' | 'system' | null
 }

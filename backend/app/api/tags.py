@@ -2,9 +2,11 @@
 
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from ..core.database import get_db
+from ..core.dependencies import get_current_user, can_modify_resource, User
+from ..core.audit import log_audit
 from ..models import (
     Tag,
     TagCreate,
@@ -22,7 +24,10 @@ SYSTEM_TAGS = ["source", "datetime"]
 
 
 @router.get("/suggestions")
-async def get_tag_autocomplete_suggestions(prefix: str = "") -> dict[str, list[str]]:
+async def get_tag_autocomplete_suggestions(
+    prefix: str = "",
+    current_user: User = Depends(get_current_user),
+) -> dict[str, list[str]]:
     """Get tag name and value suggestions based on existing tags."""
     async with get_db() as db:
         # Get unique tag names
@@ -63,7 +68,9 @@ async def get_tag_autocomplete_suggestions(prefix: str = "") -> dict[str, list[s
 
 
 @router.get("/names")
-async def get_tag_names() -> list[str]:
+async def get_tag_names(
+    current_user: User = Depends(get_current_user),
+) -> list[str]:
     """Get all unique tag names."""
     async with get_db() as db:
         cursor = await db.execute("SELECT DISTINCT name FROM tags ORDER BY name")
@@ -72,7 +79,10 @@ async def get_tag_names() -> list[str]:
 
 
 @router.get("/values/{tag_name}")
-async def get_tag_values(tag_name: str) -> list[str]:
+async def get_tag_values(
+    tag_name: str,
+    current_user: User = Depends(get_current_user),
+) -> list[str]:
     """Get all unique values for a specific tag name."""
     async with get_db() as db:
         cursor = await db.execute(
@@ -84,16 +94,25 @@ async def get_tag_values(tag_name: str) -> list[str]:
 
 
 @router.post("/node/{node_id}", response_model=Tag)
-async def add_tag_to_node(node_id: str, tag: TagCreate) -> Tag:
+async def add_tag_to_node(
+    node_id: str,
+    tag: TagCreate,
+    current_user: User = Depends(get_current_user),
+) -> Tag:
     """Add a tag to a node."""
     async with get_db() as db:
-        # Verify node exists
+        # Verify node exists and check ownership
         cursor = await db.execute(
-            "SELECT id FROM nodes WHERE id = ?",
+            "SELECT id, author FROM nodes WHERE id = ?",
             (node_id,)
         )
-        if not await cursor.fetchone():
+        node = await cursor.fetchone()
+        if not node:
             raise HTTPException(status_code=404, detail="Node not found")
+
+        # Check ownership (tags inherit from their parent node)
+        if not can_modify_resource(current_user, node["author"]):
+            raise HTTPException(status_code=403, detail="Not authorized to modify tags on this node")
 
         # Prevent adding system tags
         if tag.name in SYSTEM_TAGS:
@@ -115,27 +134,46 @@ async def add_tag_to_node(node_id: str, tag: TagCreate) -> Tag:
 
         # Create the tag
         tag_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
         await db.execute(
-            "INSERT INTO tags (id, node_id, name, value) VALUES (?, ?, ?, ?)",
-            (tag_id, node_id, tag.name, tag.value),
+            "INSERT INTO tags (id, node_id, name, value, author, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (tag_id, node_id, tag.name, tag.value, current_user.username, now),
         )
         await db.commit()
+
+        # Audit log
+        await log_audit(
+            db,
+            username=current_user.username,
+            action="create",
+            resource_type="tag",
+            resource_id=tag_id,
+            details={"node_id": node_id, "name": tag.name, "value": tag.value},
+        )
 
         return Tag(id=tag_id, node_id=node_id, name=tag.name, value=tag.value)
 
 
 @router.put("/{tag_id}", response_model=Tag)
-async def update_tag(tag_id: str, updates: TagUpdate) -> Tag:
+async def update_tag(
+    tag_id: str,
+    updates: TagUpdate,
+    current_user: User = Depends(get_current_user),
+) -> Tag:
     """Update a tag."""
     async with get_db() as db:
-        # Get existing tag
+        # Get existing tag and its parent node
         cursor = await db.execute(
-            "SELECT * FROM tags WHERE id = ?",
+            "SELECT t.*, n.author as node_author FROM tags t JOIN nodes n ON t.node_id = n.id WHERE t.id = ?",
             (tag_id,)
         )
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Tag not found")
+
+        # Check ownership (tags inherit from their parent node)
+        if not can_modify_resource(current_user, row["node_author"]):
+            raise HTTPException(status_code=403, detail="Not authorized to modify this tag")
 
         # Prevent modifying system tags
         if row["name"] in SYSTEM_TAGS:
@@ -172,6 +210,16 @@ async def update_tag(tag_id: str, updates: TagUpdate) -> Tag:
         )
         await db.commit()
 
+        # Audit log
+        await log_audit(
+            db,
+            username=current_user.username,
+            action="update",
+            resource_type="tag",
+            resource_id=tag_id,
+            details={"updates": {k: v for k, v in [("name", updates.name), ("value", updates.value)] if v is not None}},
+        )
+
         # Fetch updated tag
         cursor = await db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,))
         updated = await cursor.fetchone()
@@ -185,17 +233,24 @@ async def update_tag(tag_id: str, updates: TagUpdate) -> Tag:
 
 
 @router.delete("/{tag_id}")
-async def delete_tag(tag_id: str) -> dict:
+async def delete_tag(
+    tag_id: str,
+    current_user: User = Depends(get_current_user),
+) -> dict:
     """Delete a tag."""
     async with get_db() as db:
-        # Get existing tag
+        # Get existing tag and its parent node
         cursor = await db.execute(
-            "SELECT * FROM tags WHERE id = ?",
+            "SELECT t.*, n.author as node_author FROM tags t JOIN nodes n ON t.node_id = n.id WHERE t.id = ?",
             (tag_id,)
         )
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Tag not found")
+
+        # Check ownership (tags inherit from their parent node)
+        if not can_modify_resource(current_user, row["node_author"]):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this tag")
 
         # Prevent deleting system tags
         if row["name"] in SYSTEM_TAGS:
@@ -207,11 +262,24 @@ async def delete_tag(tag_id: str) -> dict:
         await db.execute("DELETE FROM tags WHERE id = ?", (tag_id,))
         await db.commit()
 
+        # Audit log
+        await log_audit(
+            db,
+            username=current_user.username,
+            action="delete",
+            resource_type="tag",
+            resource_id=tag_id,
+            details={"node_id": row["node_id"], "name": row["name"], "value": row["value"]},
+        )
+
         return {"message": "Tag deleted"}
 
 
 @router.get("/suggestions/node/{node_id}", response_model=TagSuggestionsResponse)
-async def get_tag_suggestions_for_node(node_id: str) -> TagSuggestionsResponse:
+async def get_tag_suggestions_for_node(
+    node_id: str,
+    current_user: User = Depends(get_current_user),
+) -> TagSuggestionsResponse:
     """
     Get tag suggestions for a node based on its content and extracted entities.
 
@@ -280,7 +348,10 @@ async def get_tag_suggestions_for_node(node_id: str) -> TagSuggestionsResponse:
 
 
 @router.post("/suggestions/reject")
-async def reject_tag_suggestion(request: RejectTagSuggestionRequest) -> dict:
+async def reject_tag_suggestion(
+    request: RejectTagSuggestionRequest,
+    current_user: User = Depends(get_current_user),
+) -> dict:
     """
     Reject a tag suggestion so it won't be shown again for this node.
 

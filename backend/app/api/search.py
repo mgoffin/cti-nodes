@@ -2,16 +2,20 @@
 
 import re
 from datetime import datetime
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from ..core.database import get_db
+from ..core.dependencies import get_current_user, User
 from ..models import Node, Tag, Extracted, SearchQuery, SearchResult
 
 router = APIRouter()
 
 
 @router.post("/", response_model=SearchResult)
-async def search_nodes(query: SearchQuery) -> SearchResult:
+async def search_nodes(
+    query: SearchQuery,
+    current_user: User = Depends(get_current_user),
+) -> SearchResult:
     """
     Search nodes using the query syntax.
 
@@ -22,6 +26,8 @@ async def search_nodes(query: SearchQuery) -> SearchResult:
     - tag:name=* : Find all nodes with a specific tag name
     - tag-value="*partial*" : Search all tag values
     - AND / OR : Combine conditions (not yet implemented)
+
+    Note: All users can search all data regardless of ownership (by design).
     """
     parsed = parse_query(query.query)
 

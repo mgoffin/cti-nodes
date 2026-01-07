@@ -159,11 +159,25 @@ export default function NodeDetail() {
               <h2 className="text-lg font-semibold theme-text-heading mb-4">Metadata</h2>
               <dl className="space-y-3">
                 <div>
+                  <dt className="text-sm theme-text-muted">Author</dt>
+                  <dd className="theme-text-primary font-medium">
+                    {node.author || 'Anonymous'}
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-sm theme-text-muted">Created</dt>
                   <dd className="theme-text-primary">
                     {format(new Date(node.created_at), 'PPpp')}
                   </dd>
                 </div>
+                {node.updated_at !== node.created_at && (
+                  <div>
+                    <dt className="text-sm theme-text-muted">Last Updated</dt>
+                    <dd className="theme-text-primary">
+                      {format(new Date(node.updated_at), 'PPpp')}
+                    </dd>
+                  </div>
+                )}
                 <div>
                   <dt className="text-sm theme-text-muted">Source</dt>
                   <dd className="break-all">

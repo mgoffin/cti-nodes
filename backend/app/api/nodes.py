@@ -2,9 +2,11 @@
 
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 
 from ..core.database import get_db
+from ..core.dependencies import get_current_user, can_modify_resource, User
+from ..core.audit import log_audit
 from ..models import Node, NodeCreate, NodeUpdate, NodeWithRelations, Tag, Edge, Extracted, LinkNotification
 from ..extractors import extract_all
 from ..linker import find_and_create_links
@@ -13,7 +15,10 @@ router = APIRouter()
 
 
 @router.post("/", response_model=NodeWithRelations, status_code=status.HTTP_201_CREATED)
-async def create_node(node_data: NodeCreate) -> NodeWithRelations:
+async def create_node(
+    node_data: NodeCreate,
+    current_user: User = Depends(get_current_user),
+) -> NodeWithRelations:
     """Create a new node with automatic extraction and linking."""
     node_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -21,8 +26,8 @@ async def create_node(node_data: NodeCreate) -> NodeWithRelations:
     async with get_db() as db:
         # Insert the node
         await db.execute(
-            "INSERT INTO nodes (id, content, created_at, updated_at) VALUES (?, ?, ?, ?)",
-            (node_id, node_data.content, now, now),
+            "INSERT INTO nodes (id, content, created_at, updated_at, author) VALUES (?, ?, ?, ?, ?)",
+            (node_id, node_data.content, now, now, current_user.username),
         )
 
         # Insert required 'source' tag
@@ -58,6 +63,16 @@ async def create_node(node_data: NodeCreate) -> NodeWithRelations:
 
         await db.commit()
 
+        # Audit log
+        await log_audit(
+            db,
+            username=current_user.username,
+            action="create",
+            resource_type="node",
+            resource_id=node_id,
+            details={"content_length": len(node_data.content), "tags_count": len(node_data.tags)},
+        )
+
         # Find and create links to other nodes
         link_result = await find_and_create_links(db, node_id)
         await db.commit()
@@ -69,7 +84,11 @@ async def create_node(node_data: NodeCreate) -> NodeWithRelations:
 
 
 @router.get("/", response_model=list[Node])
-async def list_nodes(limit: int = 50, offset: int = 0) -> list[Node]:
+async def list_nodes(
+    limit: int = 50,
+    offset: int = 0,
+    current_user: User = Depends(get_current_user),
+) -> list[Node]:
     """List all nodes with pagination."""
     async with get_db() as db:
         cursor = await db.execute(
@@ -88,6 +107,7 @@ async def list_nodes(limit: int = 50, offset: int = 0) -> list[Node]:
                     content=row["content"],
                     created_at=datetime.fromisoformat(row["created_at"]),
                     updated_at=datetime.fromisoformat(row["updated_at"]),
+                    author=row["author"] if "author" in row.keys() else None,
                     tags=tags,
                     extracted=extracted,
                 )
@@ -97,7 +117,10 @@ async def list_nodes(limit: int = 50, offset: int = 0) -> list[Node]:
 
 
 @router.get("/{node_id}", response_model=NodeWithRelations)
-async def get_node(node_id: str) -> NodeWithRelations:
+async def get_node(
+    node_id: str,
+    current_user: User = Depends(get_current_user),
+) -> NodeWithRelations:
     """Get a node by ID with all relations."""
     async with get_db() as db:
         node = await get_node_with_relations(db, node_id)
@@ -107,7 +130,11 @@ async def get_node(node_id: str) -> NodeWithRelations:
 
 
 @router.put("/{node_id}", response_model=NodeWithRelations)
-async def update_node(node_id: str, node_data: NodeUpdate) -> NodeWithRelations:
+async def update_node(
+    node_id: str,
+    node_data: NodeUpdate,
+    current_user: User = Depends(get_current_user),
+) -> NodeWithRelations:
     """Update a node's content and/or tags, re-extract entities, and re-link."""
     now = datetime.now(timezone.utc).isoformat()
     needs_relinking = False
@@ -118,6 +145,10 @@ async def update_node(node_id: str, node_data: NodeUpdate) -> NodeWithRelations:
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Node not found")
+
+        # Check ownership
+        if not can_modify_resource(current_user, row["author"]):
+            raise HTTPException(status_code=403, detail="Not authorized to modify this node")
 
         # Update content if provided
         if node_data.content is not None:
@@ -155,6 +186,19 @@ async def update_node(node_id: str, node_data: NodeUpdate) -> NodeWithRelations:
 
         await db.commit()
 
+        # Audit log
+        await log_audit(
+            db,
+            username=current_user.username,
+            action="update",
+            resource_type="node",
+            resource_id=node_id,
+            details={
+                "content_updated": node_data.content is not None,
+                "tags_updated": node_data.tags is not None,
+            },
+        )
+
         # Re-link if content or tags changed
         if needs_relinking:
             # Delete old auto-generated edges (keep manual edges)
@@ -175,19 +219,41 @@ async def update_node(node_id: str, node_data: NodeUpdate) -> NodeWithRelations:
 
 
 @router.delete("/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_node(node_id: str) -> None:
+async def delete_node(
+    node_id: str,
+    current_user: User = Depends(get_current_user),
+) -> None:
     """Delete a node and all related data."""
     async with get_db() as db:
-        cursor = await db.execute("SELECT id FROM nodes WHERE id = ?", (node_id,))
-        if not await cursor.fetchone():
+        cursor = await db.execute("SELECT * FROM nodes WHERE id = ?", (node_id,))
+        row = await cursor.fetchone()
+        if not row:
             raise HTTPException(status_code=404, detail="Node not found")
+
+        # Check ownership
+        if not can_modify_resource(current_user, row["author"]):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this node")
 
         await db.execute("DELETE FROM nodes WHERE id = ?", (node_id,))
         await db.commit()
 
+        # Audit log
+        await log_audit(
+            db,
+            username=current_user.username,
+            action="delete",
+            resource_type="node",
+            resource_id=node_id,
+            details={"author": row["author"]},
+        )
+
 
 @router.get("/{node_id}/related", response_model=list[Node])
-async def get_related_nodes(node_id: str, depth: int = 1) -> list[Node]:
+async def get_related_nodes(
+    node_id: str,
+    depth: int = 1,
+    current_user: User = Depends(get_current_user),
+) -> list[Node]:
     """Get nodes related to this node up to a certain depth."""
     async with get_db() as db:
         # Check node exists
@@ -336,6 +402,7 @@ async def get_node_with_relations(db, node_id: str) -> NodeWithRelations | None:
                     content=r["content"],
                     created_at=datetime.fromisoformat(r["created_at"]),
                     updated_at=datetime.fromisoformat(r["updated_at"]),
+                    author=r["author"] if "author" in r.keys() else None,
                     tags=rtags,
                 )
             )
@@ -345,6 +412,7 @@ async def get_node_with_relations(db, node_id: str) -> NodeWithRelations | None:
         content=row["content"],
         created_at=datetime.fromisoformat(row["created_at"]),
         updated_at=datetime.fromisoformat(row["updated_at"]),
+        author=row["author"] if "author" in row.keys() else None,
         tags=tags,
         edges=edges,
         extracted=extracted,
