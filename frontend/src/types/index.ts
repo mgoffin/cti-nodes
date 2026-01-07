@@ -45,6 +45,19 @@ export interface NodeCreate {
   tags: { name: string; value: string }[]
 }
 
+export interface Comment {
+  id: string
+  node_id: string
+  content: string
+  author?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CommentCreate {
+  content: string
+}
+
 export interface SearchResult {
   nodes: Node[]
   total: number

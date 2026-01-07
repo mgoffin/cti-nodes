@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from . import nodes, tags, edges, search, extracted, auth, users, audit
+from . import nodes, tags, edges, search, extracted, auth, users, audit, comments
 
 router = APIRouter()
 
@@ -14,3 +14,4 @@ router.include_router(extracted.router, prefix="/extracted", tags=["extracted"])
 router.include_router(auth.router, prefix="/auth", tags=["auth"])
 router.include_router(users.router, prefix="/users", tags=["users"])
 router.include_router(audit.router, prefix="/audit", tags=["audit"])
+router.include_router(comments.router, tags=["comments"])

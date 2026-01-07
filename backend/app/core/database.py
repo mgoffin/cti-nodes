@@ -154,6 +154,20 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Comments table: stores comments on nodes
+CREATE TABLE IF NOT EXISTS comments (
+    id TEXT PRIMARY KEY,
+    node_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    author TEXT DEFAULT 'Anonymous',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+);
+
+-- Index for comments lookup by node
+CREATE INDEX IF NOT EXISTS idx_comments_node ON comments(node_id);
+
 -- Indexes for auth tables
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);

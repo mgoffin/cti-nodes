@@ -22,6 +22,8 @@ import type {
   UserProfile,
   UserUpdate,
   ProfileUpdate,
+  Comment,
+  CommentCreate,
 } from '../types'
 
 const api = axios.create({
@@ -235,6 +237,28 @@ export const usersApi = {
   },
 }
 
+// Comments API
+export const commentsApi = {
+  list: async (nodeId: string, sortBy: 'created_at' | 'updated_at' = 'created_at', order: 'asc' | 'desc' = 'desc'): Promise<Comment[]> => {
+    const { data } = await api.get(`/nodes/${nodeId}/comments?sort_by=${sortBy}&order=${order}`)
+    return data
+  },
+
+  create: async (nodeId: string, comment: CommentCreate): Promise<Comment> => {
+    const { data } = await api.post(`/nodes/${nodeId}/comments`, comment)
+    return data
+  },
+
+  update: async (commentId: string, comment: CommentCreate): Promise<Comment> => {
+    const { data } = await api.put(`/comments/${commentId}`, comment)
+    return data
+  },
+
+  delete: async (commentId: string): Promise<void> => {
+    await api.delete(`/comments/${commentId}`)
+  },
+}
+
 export const apiClient = {
   nodes: nodesApi,
   search: searchApi,
@@ -243,6 +267,7 @@ export const apiClient = {
   extracted: extractedApi,
   auth: authApi,
   users: usersApi,
+  comments: commentsApi,
 }
 
 export default api

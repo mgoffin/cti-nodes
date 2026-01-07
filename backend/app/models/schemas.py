@@ -237,6 +237,40 @@ class RejectTagSuggestionRequest(BaseModel):
     reason: str
 
 
+# --- Comment Schemas ---
+
+
+class CommentBase(BaseModel):
+    """Base comment schema."""
+
+    content: str = Field(..., min_length=1)
+
+
+class CommentCreate(CommentBase):
+    """Schema for creating a comment."""
+
+    pass
+
+
+class CommentUpdate(CommentBase):
+    """Schema for updating a comment."""
+
+    pass
+
+
+class Comment(CommentBase):
+    """Full comment schema with metadata."""
+
+    id: str
+    node_id: str
+    author: Optional[str] = "Anonymous"
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # Fix forward references
 Node.model_rebuild()
 NodeWithRelations.model_rebuild()

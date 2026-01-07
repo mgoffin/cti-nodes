@@ -9,6 +9,7 @@ import TagManager from './TagManager'
 import ExtractedManager from './ExtractedManager'
 import SelectableContent from './SelectableContent'
 import ClickableSource from './ClickableSource'
+import CommentManager from './CommentManager'
 
 export default function NodeDetail() {
   const { nodeId } = useParams<{ nodeId: string }>()
@@ -228,6 +229,9 @@ export default function NodeDetail() {
                 </div>
               </div>
             )}
+
+            {/* Comments */}
+            <CommentManager nodeId={node.id} />
           </div>
         </div>
       ) : (
