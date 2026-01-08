@@ -275,82 +275,82 @@ async def set_db_version(db: aiosqlite.Connection, version: int) -> None:
 async def migrate_v1_to_v2(db: aiosqlite.Connection) -> None:
     """
     Migrate from v1 (no author columns, no auth tables) to v2 (with author columns and auth tables).
-    
+
     Adds:
     - author columns to nodes, tags, extracted, and edges tables
     - created_at column to tags table
     - Auth tables: users, sessions, audit_log, user_preferences
     """
     logger.info("Migrating database from v1 to v2...")
-    
+
     # Add author columns to existing tables
     cursor = await db.execute("PRAGMA table_info(nodes)")
     columns = {row[1] for row in await cursor.fetchall()}
-    
+
     if 'author' not in columns:
         logger.info("Adding author column to nodes table...")
         await db.execute("ALTER TABLE nodes ADD COLUMN author TEXT DEFAULT 'Anonymous'")
         logger.info("✓ Added author to nodes")
-    
+
     # Tags table
     cursor = await db.execute("PRAGMA table_info(tags)")
     columns = {row[1] for row in await cursor.fetchall()}
-    
+
     if 'author' not in columns:
         logger.info("Adding author column to tags table...")
         await db.execute("ALTER TABLE tags ADD COLUMN author TEXT DEFAULT 'Anonymous'")
         logger.info("✓ Added author to tags")
-    
+
     if 'created_at' not in columns:
         logger.info("Adding created_at column to tags table...")
         await db.execute("ALTER TABLE tags ADD COLUMN created_at TEXT")
         logger.info("✓ Added created_at to tags")
-    
+
     # Extracted table
     cursor = await db.execute("PRAGMA table_info(extracted)")
     columns = {row[1] for row in await cursor.fetchall()}
-    
+
     if 'author' not in columns:
         logger.info("Adding author column to extracted table...")
         await db.execute("ALTER TABLE extracted ADD COLUMN author TEXT DEFAULT 'Anonymous'")
         logger.info("✓ Added author to extracted")
-    
+
     # Edges table
     cursor = await db.execute("PRAGMA table_info(edges)")
     columns = {row[1] for row in await cursor.fetchall()}
-    
+
     if 'author' not in columns:
         logger.info("Adding author column to edges table...")
         await db.execute("ALTER TABLE edges ADD COLUMN author TEXT DEFAULT 'Anonymous'")
         logger.info("✓ Added author to edges")
-    
+
     # Create or update auth tables
     logger.info("Setting up authentication tables...")
-    
+
     # Always check and fix audit_log table schema
     try:
         cursor = await db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log'")
         audit_exists = await cursor.fetchone()
-        
+
         if audit_exists:
             # Check if audit_log has the correct schema
             cursor = await db.execute("PRAGMA table_info(audit_log)")
             columns = {row[1] for row in await cursor.fetchall()}
-            
+
             required_columns = {'id', 'timestamp', 'user_id', 'username', 'action', 'resource_type', 'resource_id', 'details'}
             missing_columns = required_columns - columns
-            
+
             if missing_columns:
                 logger.info(f"Audit log missing columns: {missing_columns}. Recreating table...")
                 # Backup existing data if any
                 cursor = await db.execute("SELECT COUNT(*) FROM audit_log")
                 count = (await cursor.fetchone())[0]
-                
+
                 if count > 0:
                     logger.info(f"Backing up {count} existing audit log entries...")
                     # Create temporary backup
                     await db.execute("CREATE TABLE audit_log_backup AS SELECT * FROM audit_log")
-                
+
                 # Drop and recreate with correct schema
                 await db.execute("DROP TABLE IF EXISTS audit_log")
                 await db.execute("""
@@ -365,7 +365,7 @@ async def migrate_v1_to_v2(db: aiosqlite.Connection) -> None:
                         details TEXT
                     )
                 """)
-                
+
                 # Try to migrate old data if backup exists
                 try:
                     cursor = await db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log_backup'")
@@ -373,7 +373,7 @@ async def migrate_v1_to_v2(db: aiosqlite.Connection) -> None:
                         # Migrate what we can from old schema
                         await db.execute("""
                             INSERT INTO audit_log (id, timestamp, user_id, username, action, resource_type, resource_id, details)
-                            SELECT 
+                            SELECT
                                 id,
                                 COALESCE(timestamp, datetime('now')),
                                 NULL as user_id,
@@ -388,11 +388,11 @@ async def migrate_v1_to_v2(db: aiosqlite.Connection) -> None:
                         logger.info("✓ Migrated existing audit log entries")
                 except Exception as e:
                     logger.warning(f"Could not migrate old audit logs: {e}")
-                
+
                 logger.info("✓ Recreated audit_log table with correct schema")
     except Exception as e:
         logger.warning(f"Error checking audit_log: {e}")
-    
+
     # Create auth tables with full schema
     await db.executescript("""
         CREATE TABLE IF NOT EXISTS users (
@@ -408,7 +408,7 @@ async def migrate_v1_to_v2(db: aiosqlite.Connection) -> None:
             sso_provider TEXT,
             sso_subject_id TEXT UNIQUE
         );
-        
+
         CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
@@ -420,7 +420,7 @@ async def migrate_v1_to_v2(db: aiosqlite.Connection) -> None:
             user_agent TEXT,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
-        
+
         CREATE TABLE IF NOT EXISTS audit_log (
             id TEXT PRIMARY KEY,
             timestamp TEXT NOT NULL,
@@ -431,7 +431,7 @@ async def migrate_v1_to_v2(db: aiosqlite.Connection) -> None:
             resource_id TEXT,
             details TEXT
         );
-        
+
         CREATE TABLE IF NOT EXISTS user_preferences (
             user_id TEXT PRIMARY KEY,
             display_name_override TEXT,
@@ -441,7 +441,7 @@ async def migrate_v1_to_v2(db: aiosqlite.Connection) -> None:
             updated_at TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
         CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
         CREATE INDEX IF NOT EXISTS idx_audit_log_username ON audit_log(username);
@@ -449,7 +449,7 @@ async def migrate_v1_to_v2(db: aiosqlite.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_audit_log_resource ON audit_log(resource_type, resource_id);
     """)
     logger.info("✓ Authentication tables ready")
-    
+
     await db.commit()
     logger.info("✓ Migration v1 → v2 complete")
 
@@ -458,21 +458,21 @@ async def apply_migrations(db: aiosqlite.Connection) -> None:
     """Apply all pending database migrations."""
     current_version = await get_db_version(db)
     logger.info(f"Current database version: {current_version}")
-    
+
     if current_version < CURRENT_DB_VERSION:
         logger.info(f"Database needs migration: v{current_version} → v{CURRENT_DB_VERSION}")
-        
+
         # Apply migrations in order
         if current_version < 1:
             # v0 → v1: Initial schema (handled by init_database)
             await set_db_version(db, 1)
             logger.info("✓ Set initial version to v1")
-        
+
         if current_version < 2:
             # v1 → v2: Add author columns
             await migrate_v1_to_v2(db)
             await set_db_version(db, 2)
-        
+
         logger.info(f"✓ Database migrated to v{CURRENT_DB_VERSION}")
     else:
         logger.info("Database is up to date")
@@ -485,11 +485,11 @@ async def init_database() -> None:
 
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
-        
+
         # Create base schema (idempotent)
         await db.executescript(SCHEMA)
         await db.commit()
-        
+
         # Apply any pending migrations
         await apply_migrations(db)
 

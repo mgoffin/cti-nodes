@@ -30,12 +30,12 @@ async def list_comments(
         raise HTTPException(status_code=400, detail="sort_by must be 'created_at' or 'updated_at'")
     if order not in ["asc", "desc"]:
         raise HTTPException(status_code=400, detail="order must be 'asc' or 'desc'")
-    
+
     # Check if node exists
     cursor = await db.execute("SELECT id FROM nodes WHERE id = ?", (node_id,))
     if not await cursor.fetchone():
         raise HTTPException(status_code=404, detail="Node not found")
-    
+
     # Fetch comments
     query = f"""
         SELECT id, node_id, content, author, created_at, updated_at
@@ -45,7 +45,7 @@ async def list_comments(
     """
     cursor = await db.execute(query, (node_id,))
     rows = await cursor.fetchall()
-    
+
     comments = []
     for row in rows:
         comments.append(Comment(
@@ -56,7 +56,7 @@ async def list_comments(
             created_at=datetime.fromisoformat(row[4]),
             updated_at=datetime.fromisoformat(row[5]),
         ))
-    
+
     return comments
 
 
@@ -72,11 +72,11 @@ async def create_comment(
     cursor = await db.execute("SELECT id FROM nodes WHERE id = ?", (node_id,))
     if not await cursor.fetchone():
         raise HTTPException(status_code=404, detail="Node not found")
-    
+
     comment_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     author = get_author(current_user)
-    
+
     await db.execute(
         """
         INSERT INTO comments (id, node_id, content, author, created_at, updated_at)
@@ -85,7 +85,7 @@ async def create_comment(
         (comment_id, node_id, comment_data.content, author, now, now),
     )
     await db.commit()
-    
+
     # Log audit
     await log_audit(
         db,
@@ -95,7 +95,7 @@ async def create_comment(
         resource_id=comment_id,
         user_id=current_user.id,
     )
-    
+
     return Comment(
         id=comment_id,
         node_id=node_id,
@@ -122,15 +122,15 @@ async def update_comment(
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Comment not found")
-    
+
     now = datetime.now(timezone.utc).isoformat()
-    
+
     await db.execute(
         "UPDATE comments SET content = ?, updated_at = ? WHERE id = ?",
         (comment_data.content, now, comment_id),
     )
     await db.commit()
-    
+
     # Log audit
     await log_audit(
         db,
@@ -140,7 +140,7 @@ async def update_comment(
         resource_id=comment_id,
         user_id=current_user.id,
     )
-    
+
     return Comment(
         id=row[0],
         node_id=row[1],
@@ -163,12 +163,12 @@ async def delete_comment(
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Comment not found")
-    
+
     node_id = row[0]
-    
+
     await db.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
     await db.commit()
-    
+
     # Log audit
     await log_audit(
         db,
@@ -178,5 +178,5 @@ async def delete_comment(
         resource_id=comment_id,
         user_id=current_user.id,
     )
-    
+
     return None

@@ -65,7 +65,7 @@ class Settings(BaseSettings):
         env_prefix="NODES_",
         extra="ignore"
     )
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Auto-disable audit logging if auth is disabled

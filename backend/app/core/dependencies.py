@@ -11,7 +11,7 @@ from .security import verify_token
 async def get_db_dependency() -> AsyncGenerator[aiosqlite.Connection, None]:
     """
     FastAPI dependency for database connection.
-    
+
     Yields:
         Database connection
     """
