@@ -126,6 +126,7 @@ export default function CommentManager({ nodeId }: CommentManagerProps) {
     const processedLines: string[] = []
     let inUnorderedList = false
     let inOrderedList = false
+    let currentListItems: string[] = []
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
@@ -134,32 +135,42 @@ export default function CommentManager({ nodeId }: CommentManagerProps) {
       
       if (unorderedMatch) {
         if (!inUnorderedList) {
-          processedLines.push('<ul class="list-disc list-inside my-2 ml-4">')
           inUnorderedList = true
+          currentListItems = []
         }
-        processedLines.push(`<li>${unorderedMatch[1]}</li>`)
+        currentListItems.push(`<li>${unorderedMatch[1]}</li>`)
       } else if (orderedMatch) {
         if (!inOrderedList) {
-          processedLines.push('<ol class="list-decimal list-inside my-2 ml-4">')
           inOrderedList = true
+          currentListItems = []
         }
-        processedLines.push(`<li>${orderedMatch[1]}</li>`)
+        currentListItems.push(`<li>${orderedMatch[1]}</li>`)
       } else {
+        // Close any open list and add as single block
         if (inUnorderedList) {
-          processedLines.push('</ul>')
+          processedLines.push(`<ul class="list-disc list-inside my-2 ml-4">${currentListItems.join('')}</ul>`)
           inUnorderedList = false
+          currentListItems = []
         }
         if (inOrderedList) {
-          processedLines.push('</ol>')
+          processedLines.push(`<ol class="list-decimal list-inside my-2 ml-4">${currentListItems.join('')}</ol>`)
           inOrderedList = false
+          currentListItems = []
         }
-        processedLines.push(line)
+        // Add non-list line
+        if (line.trim() !== '') {
+          processedLines.push(line)
+        }
       }
     }
     
-    // Close any open lists
-    if (inUnorderedList) processedLines.push('</ul>')
-    if (inOrderedList) processedLines.push('</ol>')
+    // Close any open lists at the end
+    if (inUnorderedList) {
+      processedLines.push(`<ul class="list-disc list-inside my-2 ml-4">${currentListItems.join('')}</ul>`)
+    }
+    if (inOrderedList) {
+      processedLines.push(`<ol class="list-decimal list-inside my-2 ml-4">${currentListItems.join('')}</ol>`)
+    }
     
     html = processedLines.join('\n')
     
