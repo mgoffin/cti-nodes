@@ -100,7 +100,7 @@ export default function SelectionPopover({
           <Combobox
             value={selectedType}
             onChange={setSelectedType}
-            options={entityTypes || []}
+            options={[...(entityTypes || [])].sort((a, b) => formatTypeName(a).localeCompare(formatTypeName(b), undefined, { sensitivity: 'base' }))}
             placeholder="Type..."
             className="min-w-[140px]"
             autoFocus

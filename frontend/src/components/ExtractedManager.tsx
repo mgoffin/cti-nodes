@@ -51,6 +51,11 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
     return acc
   }, {} as Record<string, Array<{ entity: Extracted; originalIndex: number }>>)
 
+  // Create sorted array of [type, items] tuples for rendering
+  const sortedGroups = Object.entries(groupedExtracted).sort(([typeA], [typeB]) => 
+    formatTypeName(typeA).localeCompare(formatTypeName(typeB), undefined, { sensitivity: 'base' })
+  )
+
   // Mutations
   const addMutation = useMutation({
     mutationFn: (entity: { type: string; value: string }) =>
@@ -182,7 +187,7 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
       </div>
 
       <div className="space-y-4">
-        {Object.entries(groupedExtracted).map(([type, items]) => (
+        {sortedGroups.map(([type, items]) => (
           <div key={type}>
             <h3 className="text-sm font-medium theme-text-muted mb-2">
               {formatTypeName(type)}
@@ -206,7 +211,7 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
                       <Combobox
                         value={editType}
                         onChange={setEditType}
-                        options={entityTypes || []}
+                        options={[...(entityTypes || [])].sort((a, b) => formatTypeName(a).localeCompare(formatTypeName(b), undefined, { sensitivity: 'base' }))}
                         placeholder="Type"
                         className="w-40"
                         formatOption={formatTypeName}
@@ -296,7 +301,7 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
                 <Combobox
                   value={newType}
                   onChange={setNewType}
-                  options={entityTypes || []}
+                  options={[...(entityTypes || [])].sort((a, b) => formatTypeName(a).localeCompare(formatTypeName(b), undefined, { sensitivity: 'base' }))}
                   placeholder="e.g., ipv4, domain"
                   autoFocus
                   formatOption={formatTypeName}
