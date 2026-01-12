@@ -1,0 +1,8 @@
+# Icon files (replace with your own)
+icon16.png
+icon48.png
+icon128.png
+
+# Chrome extension files
+*.pem
+*.crx

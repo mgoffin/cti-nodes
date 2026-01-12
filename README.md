@@ -6,6 +6,7 @@
 
 - [Overview](#overview)
 - [Core Features](#core-features)
+- [Chrome Extension](#chrome-extension)
 - [Planned Features](#planned-features)
 - [Authentication & Multi-User Support](#authentication--multi-user-support-optional)
 - [Architecture](#architecture)
@@ -62,6 +63,29 @@ Think of it as a "threat intel scratch pad" that builds its own connection map.
   - Type mismatches (e.g., filename labeled as domain)
   - Defanged IOCs that should be refanged (e.g., `192[.]168[.]1[.]1` → `192.168.1.1`)
 - **Dark/Light Theme** - Toggle between dark and light modes for comfortable viewing
+- **Comments** - Add markdown-formatted comments to nodes for collaboration and documentation
+
+## Chrome Extension
+
+The Nodes Chrome Extension allows you to capture content and search directly from any webpage. Perfect for quickly adding IOCs, articles, or threat intel snippets while browsing.
+
+### Features
+
+- **Add to Nodes** - Right-click selected text to create a new node with the page URL as source
+- **Search Value** - Quickly search for highlighted text in your Nodes database
+- **Search Source** - Find all nodes that reference the current page URL
+- **Toast Notifications** - Get instant feedback with links to newly created nodes
+- **Configurable** - Set custom API and frontend URLs for any deployment
+
+### Installation
+
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable "Developer mode" (top-right toggle)
+3. Click "Load unpacked" and select the `chrome_extension` folder
+4. Click the extension icon to configure your API and frontend URLs
+5. Start right-clicking!
+
+See [chrome_extension/README.md](chrome_extension/README.md) for detailed instructions and troubleshooting.
 
 ## Planned Features
 

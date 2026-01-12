@@ -52,7 +52,7 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
   }, {} as Record<string, Array<{ entity: Extracted; originalIndex: number }>>)
 
   // Create sorted array of [type, items] tuples for rendering
-  const sortedGroups = Object.entries(groupedExtracted).sort(([typeA], [typeB]) => 
+  const sortedGroups = Object.entries(groupedExtracted).sort(([typeA], [typeB]) =>
     formatTypeName(typeA).localeCompare(formatTypeName(typeB), undefined, { sensitivity: 'base' })
   )
 
