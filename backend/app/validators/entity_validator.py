@@ -101,7 +101,7 @@ def check_type_mismatch(
     non_pattern_types = {
         "threat_actor", "malware", "tool", "campaign",
         "registry_key", "file_path", "mutex", "user_agent",
-        "asn", "country", "mitre_attack", "filename"
+        "asn", "country", "mitre_attack", "filename", "command"
     }
 
     # First, always try to detect what the value actually is based on patterns

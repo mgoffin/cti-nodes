@@ -107,6 +107,43 @@ export default function TagManager({ nodeId, tags }: TagManagerProps) {
     },
   })
 
+  const handleAcceptAll = async () => {
+    if (!nodeSuggestionsData?.suggestions || nodeSuggestionsData.suggestions.length === 0) return
+    
+    try {
+      for (const suggestion of nodeSuggestionsData.suggestions) {
+        await tagsApi.addToNode(nodeId, { 
+          name: suggestion.tag_name, 
+          value: suggestion.tag_value 
+        })
+      }
+      queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['tagNodeSuggestions', nodeId] })
+      toast.success(`Added ${nodeSuggestionsData.suggestions.length} tags`)
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to add all tags')
+    }
+  }
+
+  const handleRejectAll = async () => {
+    if (!nodeSuggestionsData?.suggestions || nodeSuggestionsData.suggestions.length === 0) return
+    
+    try {
+      for (const suggestion of nodeSuggestionsData.suggestions) {
+        await tagsApi.rejectSuggestion({
+          node_id: nodeId,
+          tag_name: suggestion.tag_name,
+          tag_value: suggestion.tag_value,
+          reason: suggestion.reason,
+        })
+      }
+      queryClient.invalidateQueries({ queryKey: ['tagNodeSuggestions', nodeId] })
+      toast.success('All suggestions dismissed')
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to dismiss all suggestions')
+    }
+  }
+
   const handleStartEdit = (tag: Tag) => {
     setEditingTag(tag.id)
     setEditValue(tag.value)
@@ -303,12 +340,34 @@ export default function TagManager({ nodeId, tags }: TagManagerProps) {
         {/* Tag suggestions */}
         {nodeSuggestionsData?.suggestions && nodeSuggestionsData.suggestions.length > 0 && (
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <h3 className="text-sm font-medium theme-text-muted mb-2 flex items-center gap-1">
-              <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-              Suggested Tags
-            </h3>
+            <div className="flex items-center justify-between mb-2 pr-2">
+              <h3 className="text-sm font-medium theme-text-muted flex items-center gap-1">
+                <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                Suggested Tags
+              </h3>
+              <div className="flex gap-1">
+                <button
+                  onClick={handleAcceptAll}
+                  className="suggestion-btn-accept"
+                  title="Accept all suggestions"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleRejectAll}
+                  className="suggestion-btn-reject"
+                  title="Reject all suggestions"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
             <div className="space-y-2">
               {nodeSuggestionsData.suggestions.map((suggestion) => (
                 <TagSuggestionBanner

@@ -330,6 +330,7 @@ extracted
 | `asn` | ASN | Autonomous System Numbers |
 | `country` | Country | Country codes/names |
 | `mitre_attack` | ATT&CK | MITRE ATT&CK technique IDs |
+| `command` | Command | Commands or command-line strings |
 
 threat_actor_aliases (reference table)
 ├── alias (TEXT, PK) ───────────► e.g., "Fancy Bear", "APT28", "Sofacy"

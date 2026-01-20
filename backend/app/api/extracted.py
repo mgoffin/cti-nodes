@@ -44,6 +44,7 @@ DEFAULT_ENTITY_TYPES = [
     "asn",
     "country",
     "mitre_attack",
+    "command",
 ]
 
 

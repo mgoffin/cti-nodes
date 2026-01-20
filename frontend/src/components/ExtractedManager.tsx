@@ -251,11 +251,6 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
                     // Display mode
                     <>
                       <ClickableExtracted extracted={entity} />
-                      {entity.raw_value && entity.raw_value !== entity.value && (
-                        <span className="text-xs theme-text-muted" title="Original (defanged)">
-                          [{entity.raw_value}]
-                        </span>
-                      )}
                       <button
                         onClick={() => handleStartEdit(entity)}
                         className="icon-btn"
@@ -277,6 +272,14 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
                     </>
                   )}
                   </div>
+                  {/* Display raw_value below if different from value */}
+                  {entity.raw_value && entity.raw_value !== entity.value && !editingId && (
+                    <div className="ml-5 mt-1">
+                      <span className="text-xs theme-text-muted" title="Original (defanged)">
+                        [{entity.raw_value}]
+                      </span>
+                    </div>
+                  )}
                   {/* Suggestion banner */}
                   {suggestionsByEntityId[entity.id] && !editingId && (
                     <SuggestionBanner
