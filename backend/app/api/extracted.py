@@ -14,10 +14,14 @@ from ..models import (
     EntitySuggestion,
     EntitySuggestionsResponse,
     RejectSuggestionRequest,
+    ExtractedEntitySuggestionSchema,
+    ExtractedEntitySuggestionsResponse,
+    RejectExtractedEntitySuggestionRequest,
 )
 from ..extractors.defang import refang, is_defanged
 from ..linker import find_and_create_links
 from ..validators.entity_validator import validate_entity
+from ..validators.entity_suggester import get_extracted_entity_suggestions
 
 router = APIRouter()
 
@@ -430,6 +434,144 @@ async def reject_suggestion(
                 request.suggestion_type,
                 request.suggested_value,
                 request.suggested_type,
+                now,
+            )
+        )
+        await db.commit()
+
+    return {"message": "Suggestion rejected"}
+
+
+@router.get("/entity-suggestions/{node_id}", response_model=ExtractedEntitySuggestionsResponse)
+async def get_extracted_entity_suggestions_endpoint(
+    node_id: str,
+    current_user: User = Depends(get_current_user),
+) -> ExtractedEntitySuggestionsResponse:
+    """
+    Get entity extraction suggestions for a node based on entities in other nodes.
+
+    Analyzes the node's content to find values that match entities extracted
+    from other nodes in the graph. Suggests adding these as extracted entities
+    if they appear in the current node's content.
+
+    Filters out suggestions that have been previously rejected.
+    """
+    async with get_db() as db:
+        # Get node content
+        cursor = await db.execute(
+            "SELECT id, content FROM nodes WHERE id = ?",
+            (node_id,)
+        )
+        node = await cursor.fetchone()
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+
+        # Get existing extracted entities for this node
+        cursor = await db.execute(
+            "SELECT type, value FROM extracted WHERE node_id = ?",
+            (node_id,)
+        )
+        extracted_rows = await cursor.fetchall()
+        existing_extracted = [{"type": r["type"], "value": r["value"]} for r in extracted_rows]
+
+        # Get all entities from other nodes in the graph
+        cursor = await db.execute(
+            "SELECT type, value, node_id FROM extracted WHERE node_id != ?",
+            (node_id,)
+        )
+        all_entities_rows = await cursor.fetchall()
+        all_entities = [
+            {"type": r["type"], "value": r["value"], "node_id": r["node_id"]}
+            for r in all_entities_rows
+        ]
+
+        # Get rejected suggestions for this node
+        cursor = await db.execute(
+            "SELECT entity_type, entity_value, reason FROM rejected_extracted_entity_suggestions WHERE node_id = ?",
+            (node_id,)
+        )
+        rejected_rows = await cursor.fetchall()
+        rejected = {
+            (r["entity_type"].lower(), r["entity_value"].lower(), r["reason"])
+            for r in rejected_rows
+        }
+
+        # Get suggestions
+        raw_suggestions = get_extracted_entity_suggestions(
+            node["content"],
+            all_entities,
+            existing_extracted,
+            node_id
+        )
+
+        # Filter out rejected suggestions
+        suggestions = []
+        for s in raw_suggestions:
+            key = (s.entity_type.lower(), s.entity_value.lower(), s.reason)
+            if key not in rejected:
+                suggestions.append(ExtractedEntitySuggestionSchema(
+                    type=s.entity_type,
+                    value=s.entity_value,
+                    reason=s.reason,
+                    source_node_id=s.source_node_id,
+                    confidence=s.confidence,
+                ))
+
+    return ExtractedEntitySuggestionsResponse(
+        node_id=node_id,
+        suggestions=suggestions
+    )
+
+
+@router.post("/entity-suggestions/reject")
+async def reject_extracted_entity_suggestion(
+    request: RejectExtractedEntitySuggestionRequest,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Reject an entity extraction suggestion so it won't be shown again for this node.
+
+    The rejection is persisted and tied to the specific node and suggestion.
+    """
+    async with get_db() as db:
+        # Verify node exists
+        cursor = await db.execute(
+            "SELECT id FROM nodes WHERE id = ?",
+            (request.node_id,)
+        )
+        if not await cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Node not found")
+
+        # Check if already rejected
+        cursor = await db.execute(
+            """
+            SELECT id FROM rejected_extracted_entity_suggestions
+            WHERE node_id = ?
+            AND entity_type = ?
+            AND entity_value = ?
+            AND reason = ?
+            """,
+            (request.node_id, request.entity_type, request.entity_value, request.reason)
+        )
+        if await cursor.fetchone():
+            return {"message": "Suggestion already rejected"}
+
+        # Insert rejection
+        rejection_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        await db.execute(
+            """
+            INSERT INTO rejected_extracted_entity_suggestions
+            (id, node_id, entity_type, entity_value, reason, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                rejection_id,
+                request.node_id,
+                request.entity_type,
+                request.entity_value,
+                request.reason,
                 now,
             )
         )

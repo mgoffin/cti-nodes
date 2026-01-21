@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { extractedApi } from '../api/client'
-import type { Extracted, EntitySuggestion } from '../types'
+import type { Extracted, EntitySuggestion, ExtractedEntitySuggestion } from '../types'
 import ClickableExtracted from './ClickableExtracted'
 import Combobox from './Combobox'
 import { getEntityHighlightColor, getEntityBorderColor } from '../utils/entityColors'
@@ -36,6 +36,13 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
     queryKey: ['entitySuggestions', nodeId],
     queryFn: () => extractedApi.getSuggestions(nodeId),
     enabled: !!nodeId && extracted.length > 0,
+  })
+
+  // Get extracted entity suggestions (new entities from other nodes)
+  const { data: entitySuggestionsData } = useQuery({
+    queryKey: ['extractedEntitySuggestions', nodeId],
+    queryFn: () => extractedApi.getEntitySuggestions(nodeId),
+    enabled: !!nodeId,
   })
 
   // Create a map of suggestions by extracted_id for easy lookup
@@ -118,6 +125,75 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
       toast.error(error.response?.data?.detail || 'Failed to dismiss suggestion')
     },
   })
+
+  const acceptEntitySuggestionMutation = useMutation({
+    mutationFn: (suggestion: ExtractedEntitySuggestion) =>
+      extractedApi.addToNode(nodeId, { type: suggestion.type, value: suggestion.value }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['extractedEntitySuggestions', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['tagNodeSuggestions', nodeId] })
+      toast.success('Entity added')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to add entity')
+    },
+  })
+
+  const rejectEntitySuggestionMutation = useMutation({
+    mutationFn: (suggestion: ExtractedEntitySuggestion) =>
+      extractedApi.rejectEntitySuggestion({
+        node_id: nodeId,
+        entity_type: suggestion.type,
+        entity_value: suggestion.value,
+        reason: suggestion.reason,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['extractedEntitySuggestions', nodeId] })
+      toast.success('Suggestion dismissed')
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to dismiss suggestion')
+    },
+  })
+
+  const handleAcceptAllEntitySuggestions = async () => {
+    if (!entitySuggestionsData?.suggestions || entitySuggestionsData.suggestions.length === 0) return
+    
+    try {
+      for (const suggestion of entitySuggestionsData.suggestions) {
+        await extractedApi.addToNode(nodeId, { 
+          type: suggestion.type, 
+          value: suggestion.value 
+        })
+      }
+      queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['extractedEntitySuggestions', nodeId] })
+      queryClient.invalidateQueries({ queryKey: ['tagNodeSuggestions', nodeId] })
+      toast.success(`Added ${entitySuggestionsData.suggestions.length} entities`)
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to add all entities')
+    }
+  }
+
+  const handleRejectAllEntitySuggestions = async () => {
+    if (!entitySuggestionsData?.suggestions || entitySuggestionsData.suggestions.length === 0) return
+    
+    try {
+      for (const suggestion of entitySuggestionsData.suggestions) {
+        await extractedApi.rejectEntitySuggestion({
+          node_id: nodeId,
+          entity_type: suggestion.type,
+          entity_value: suggestion.value,
+          reason: suggestion.reason,
+        })
+      }
+      queryClient.invalidateQueries({ queryKey: ['extractedEntitySuggestions', nodeId] })
+      toast.success('All suggestions dismissed')
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to dismiss all suggestions')
+    }
+  }
 
   const acceptSuggestionMutation = useMutation({
     mutationFn: (suggestion: EntitySuggestion) => {
@@ -350,6 +426,51 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
         {extracted.length === 0 && !showAddForm && (
           <p className="text-sm theme-text-muted">No extracted entities</p>
         )}
+
+        {/* Suggested entities */}
+        {entitySuggestionsData?.suggestions && entitySuggestionsData.suggestions.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between mb-2 pr-2">
+              <h3 className="text-sm font-medium theme-text-muted flex items-center gap-1">
+                <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                Suggested Entities
+              </h3>
+              <div className="flex gap-1">
+                <button
+                  onClick={handleAcceptAllEntitySuggestions}
+                  className="suggestion-btn-accept"
+                  title="Accept all suggestions"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleRejectAllEntitySuggestions}
+                  className="suggestion-btn-reject"
+                  title="Reject all suggestions"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {entitySuggestionsData.suggestions.map((suggestion) => (
+                <EntitySuggestionBanner
+                  key={`${suggestion.type}-${suggestion.value}`}
+                  suggestion={suggestion}
+                  onAccept={() => acceptEntitySuggestionMutation.mutate(suggestion)}
+                  onReject={() => rejectEntitySuggestionMutation.mutate(suggestion)}
+                  isLoading={acceptEntitySuggestionMutation.isPending || rejectEntitySuggestionMutation.isPending}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -392,6 +513,57 @@ function SuggestionBanner({ suggestion, onAccept, onReject, isLoading }: Suggest
             disabled={isLoading}
             className="suggestion-btn-accept"
             title="Accept suggestion"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+          <button
+            onClick={onReject}
+            disabled={isLoading}
+            className="suggestion-btn-reject"
+            title="Dismiss suggestion"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Entity suggestion banner component (for new entities from other nodes)
+interface EntitySuggestionBannerProps {
+  suggestion: ExtractedEntitySuggestion
+  onAccept: () => void
+  onReject: () => void
+  isLoading: boolean
+}
+
+function EntitySuggestionBanner({ suggestion, onAccept, onReject, isLoading }: EntitySuggestionBannerProps) {
+  return (
+    <div className="p-2 rounded-md border suggestion-banner">
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="tag tag-default text-xs">
+              {formatTypeName(suggestion.type)}: {suggestion.value}
+            </span>
+            <span className="text-xs suggestion-confidence">
+              {Math.round(suggestion.confidence * 100)}% confidence
+            </span>
+          </div>
+          <p className="text-xs suggestion-reason mt-1">{suggestion.reason}</p>
+        </div>
+        {/* Action buttons */}
+        <div className="flex gap-1 flex-shrink-0">
+          <button
+            onClick={onAccept}
+            disabled={isLoading}
+            className="suggestion-btn-accept"
+            title="Add this entity"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

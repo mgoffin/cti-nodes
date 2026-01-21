@@ -102,6 +102,20 @@ CREATE TABLE IF NOT EXISTS rejected_tag_suggestions (
 -- Index for rejected tag suggestions lookup
 CREATE INDEX IF NOT EXISTS idx_rejected_tag_node ON rejected_tag_suggestions(node_id);
 
+-- Rejected extracted entity suggestions table: tracks entity suggestions user has dismissed
+CREATE TABLE IF NOT EXISTS rejected_extracted_entity_suggestions (
+    id TEXT PRIMARY KEY,
+    node_id TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_value TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+);
+
+-- Index for rejected entity suggestions lookup
+CREATE INDEX IF NOT EXISTS idx_rejected_entity_node ON rejected_extracted_entity_suggestions(node_id);
+
 -- Authentication tables (v2+)
 -- Users table: stores user accounts
 CREATE TABLE IF NOT EXISTS users (

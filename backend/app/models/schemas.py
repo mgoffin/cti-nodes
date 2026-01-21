@@ -209,6 +209,35 @@ class RejectSuggestionRequest(BaseModel):
     suggested_type: Optional[str] = None
 
 
+# --- Extracted Entity Suggestion Schemas (for new entities found in graph) ---
+
+
+class ExtractedEntitySuggestionSchema(BaseModel):
+    """A suggested entity to extract based on other nodes in the graph."""
+
+    type: str
+    value: str
+    reason: str
+    source_node_id: str  # Which node has this entity
+    confidence: float = 0.9
+
+
+class ExtractedEntitySuggestionsResponse(BaseModel):
+    """Response containing entity extraction suggestions for a node."""
+
+    node_id: str
+    suggestions: list[ExtractedEntitySuggestionSchema]
+
+
+class RejectExtractedEntitySuggestionRequest(BaseModel):
+    """Request to reject an entity extraction suggestion."""
+
+    node_id: str
+    entity_type: str
+    entity_value: str
+    reason: str
+
+
 # --- Tag Suggestion Schemas ---
 
 

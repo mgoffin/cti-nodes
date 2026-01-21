@@ -115,6 +115,26 @@ export interface RejectSuggestionRequest {
   suggested_type?: string | null
 }
 
+export interface ExtractedEntitySuggestion {
+  type: string
+  value: string
+  reason: string
+  source_node_id: string
+  confidence: number
+}
+
+export interface ExtractedEntitySuggestionsResponse {
+  node_id: string
+  suggestions: ExtractedEntitySuggestion[]
+}
+
+export interface RejectExtractedEntitySuggestionRequest {
+  node_id: string
+  entity_type: string
+  entity_value: string
+  reason: string
+}
+
 export interface TagSuggestion {
   tag_name: string
   tag_value: string

@@ -14,6 +14,8 @@ import type {
   ExtractedUpdate,
   EntitySuggestionsResponse,
   RejectSuggestionRequest,
+  ExtractedEntitySuggestionsResponse,
+  RejectExtractedEntitySuggestionRequest,
   TagSuggestionsResponse,
   RejectTagSuggestionRequest,
   User,
@@ -172,6 +174,15 @@ export const extractedApi = {
 
   rejectSuggestion: async (request: RejectSuggestionRequest): Promise<void> => {
     await api.post('/extracted/suggestions/reject', request)
+  },
+
+  getEntitySuggestions: async (nodeId: string): Promise<ExtractedEntitySuggestionsResponse> => {
+    const { data } = await api.get(`/extracted/entity-suggestions/${nodeId}`)
+    return data
+  },
+
+  rejectEntitySuggestion: async (request: RejectExtractedEntitySuggestionRequest): Promise<void> => {
+    await api.post('/extracted/entity-suggestions/reject', request)
   },
 }
 

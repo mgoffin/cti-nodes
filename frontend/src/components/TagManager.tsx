@@ -109,12 +109,12 @@ export default function TagManager({ nodeId, tags }: TagManagerProps) {
 
   const handleAcceptAll = async () => {
     if (!nodeSuggestionsData?.suggestions || nodeSuggestionsData.suggestions.length === 0) return
-    
+
     try {
       for (const suggestion of nodeSuggestionsData.suggestions) {
-        await tagsApi.addToNode(nodeId, { 
-          name: suggestion.tag_name, 
-          value: suggestion.tag_value 
+        await tagsApi.addToNode(nodeId, {
+          name: suggestion.tag_name,
+          value: suggestion.tag_value
         })
       }
       queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
@@ -127,7 +127,7 @@ export default function TagManager({ nodeId, tags }: TagManagerProps) {
 
   const handleRejectAll = async () => {
     if (!nodeSuggestionsData?.suggestions || nodeSuggestionsData.suggestions.length === 0) return
-    
+
     try {
       for (const suggestion of nodeSuggestionsData.suggestions) {
         await tagsApi.rejectSuggestion({
