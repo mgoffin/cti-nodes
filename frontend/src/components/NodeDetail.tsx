@@ -117,40 +117,85 @@ export default function NodeDetail() {
             <ExtractedManager nodeId={node.id} extracted={node.extracted} />
 
             {/* Related Nodes */}
-            {node.related_nodes.length > 0 && (
-              <div className="card">
-                <h2 className="text-lg font-semibold theme-text-heading mb-4">
-                  Related Nodes ({node.related_nodes.length})
-                </h2>
-                <div className="space-y-3">
-                  {node.related_nodes.map((relNode) => {
-                    const edge = node.edges.find(
-                      e => e.source_node_id === relNode.id || e.target_node_id === relNode.id
-                    )
-                    return (
-                      <Link
-                        key={relNode.id}
-                        to={`/node/${relNode.id}`}
-                        className="block p-3 rounded-lg related-node-item transition-colors"
-                      >
-                        <p className="theme-text-primary text-sm line-clamp-2">{relNode.content}</p>
-                        {edge && (
-                          <div className="flex items-center mt-2 text-xs theme-text-muted">
-                            <span className="tag tag-default mr-2">{edge.edge_type}</span>
-                            {edge.match_value && (
-                              <span>via: {edge.match_value}</span>
-                            )}
-                            <span className="ml-auto">
-                              Confidence: {(edge.confidence * 100).toFixed(0)}%
-                            </span>
-                          </div>
-                        )}
-                      </Link>
-                    )
-                  })}
+            {(() => {
+              // Filter out related nodes that are only connected via system or suggested tags
+              const systemTags = ['source', 'datetime']
+              // Tags that are auto-suggested by the system
+              const suggestedTags = ['iocs', 'malware', 'attribution', 'vulnerability', 'mitre_att&ck', 
+                                     'report', 'advisory', 'article', 'analysis', 'alert', 'bulletin',
+                                     'apt', 'ransomware', 'phishing', 'exploit', 'campaign',
+                                     'united_states', 'europe', 'asia', 'middle_east', 'russia', 
+                                     'china', 'iran', 'north_korea']
+              
+              const filteredRelatedNodes = node.related_nodes.filter((relNode) => {
+                const edge = node.edges.find(
+                  e => e.source_node_id === relNode.id || e.target_node_id === relNode.id
+                )
+                
+                // If no edge found, keep the node (shouldn't happen)
+                if (!edge) return true
+                
+                // Keep manual edges
+                if (edge.edge_type === 'manual') return true
+                
+                // Keep IOC and entity matches
+                if (edge.edge_type === 'ioc_match' || edge.edge_type === 'entity_match') return true
+                
+                // For tag_match edges
+                if (edge.edge_type === 'tag_match' && edge.match_value) {
+                  const tagName = edge.match_value.split('=')[0]
+                  
+                  // Keep source tag matches (meaningful - same origin)
+                  if (tagName === 'source') return true
+                  
+                  // Filter out system and suggested tags
+                  if (systemTags.includes(tagName) || suggestedTags.includes(tagName)) return false
+                  
+                  // Keep user-created custom tags
+                  return true
+                }
+                
+                // Filter out content_match (too generic)
+                if (edge.edge_type === 'content_match') return false
+                
+                return true
+              })
+              
+              return filteredRelatedNodes.length > 0 && (
+                <div className="card">
+                  <h2 className="text-lg font-semibold theme-text-heading mb-4">
+                    Related Nodes ({filteredRelatedNodes.length})
+                  </h2>
+                  <div className="space-y-3">
+                    {filteredRelatedNodes.map((relNode) => {
+                      const edge = node.edges.find(
+                        e => e.source_node_id === relNode.id || e.target_node_id === relNode.id
+                      )
+                      return (
+                        <Link
+                          key={relNode.id}
+                          to={`/node/${relNode.id}`}
+                          className="block p-3 rounded-lg related-node-item transition-colors"
+                        >
+                          <p className="theme-text-primary text-sm line-clamp-2">{relNode.content}</p>
+                          {edge && (
+                            <div className="flex items-center mt-2 text-xs theme-text-muted">
+                              <span className="tag tag-default mr-2">{edge.edge_type}</span>
+                              {edge.match_value && (
+                                <span>via: {edge.match_value}</span>
+                              )}
+                              <span className="ml-auto">
+                                Confidence: {(edge.confidence * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                          )}
+                        </Link>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
 
           {/* Sidebar */}
@@ -202,33 +247,71 @@ export default function NodeDetail() {
             <TagManager nodeId={node.id} tags={node.tags} />
 
             {/* Edges */}
-            {node.edges.length > 0 && (
-              <div className="card">
-                <h2 className="text-lg font-semibold theme-text-heading mb-4">
-                  Edges ({node.edges.length})
-                </h2>
-                <div className="space-y-2">
-                  {node.edges.map((edge) => (
-                    <div key={edge.id} className="text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="tag tag-default">{edge.edge_type}</span>
-                        <span className={`text-xs ${
-                          edge.confidence >= 0.8 ? 'text-green-600 dark:text-green-400' :
-                          edge.confidence >= 0.5 ? 'text-yellow-600 dark:text-yellow-400' : 'text-orange-600 dark:text-orange-400'
-                        }`}>
-                          {(edge.confidence * 100).toFixed(0)}%
-                        </span>
+            {(() => {
+              // Filter out edges based on system-generated and suggested tags
+              const systemTags = ['source', 'datetime']
+              // Tags that are auto-suggested by the system
+              const suggestedTags = ['iocs', 'malware', 'attribution', 'vulnerability', 'mitre_att&ck', 
+                                     'report', 'advisory', 'article', 'analysis', 'alert', 'bulletin',
+                                     'apt', 'ransomware', 'phishing', 'exploit', 'campaign',
+                                     'united_states', 'europe', 'asia', 'middle_east', 'russia', 
+                                     'china', 'iran', 'north_korea']
+              
+              const filteredEdges = node.edges.filter(edge => {
+                // Keep manual edges
+                if (edge.edge_type === 'manual') return true
+                
+                // Keep IOC and entity matches
+                if (edge.edge_type === 'ioc_match' || edge.edge_type === 'entity_match') return true
+                
+                // For tag_match edges
+                if (edge.edge_type === 'tag_match' && edge.match_value) {
+                  const tagName = edge.match_value.split('=')[0]
+                  
+                  // Keep source tag matches (meaningful - same origin)
+                  if (tagName === 'source') return true
+                  
+                  // Filter out system and suggested tags
+                  if (systemTags.includes(tagName) || suggestedTags.includes(tagName)) return false
+                  
+                  // Keep user-created custom tags
+                  return true
+                }
+                
+                // Filter out content_match (too generic)
+                if (edge.edge_type === 'content_match') return false
+                
+                return true
+              })
+              
+              return filteredEdges.length > 0 && (
+                <div className="card">
+                  <h2 className="text-lg font-semibold theme-text-heading mb-4">
+                    Edges ({filteredEdges.length})
+                  </h2>
+                  <div className="space-y-2">
+                    {filteredEdges.map((edge) => (
+                      <div key={edge.id} className="text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="tag tag-default">{edge.edge_type}</span>
+                          <span className={`text-xs ${
+                            edge.confidence >= 0.8 ? 'text-green-600 dark:text-green-400' :
+                            edge.confidence >= 0.5 ? 'text-yellow-600 dark:text-yellow-400' : 'text-orange-600 dark:text-orange-400'
+                          }`}>
+                            {(edge.confidence * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        {edge.match_value && (
+                          <p className="theme-text-muted text-xs mt-1 truncate">
+                            {edge.match_value}
+                          </p>
+                        )}
                       </div>
-                      {edge.match_value && (
-                        <p className="theme-text-muted text-xs mt-1 truncate">
-                          {edge.match_value}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {/* Comments */}
             <CommentManager nodeId={node.id} />
