@@ -217,20 +217,22 @@ curl -X POST http://localhost:8000/api/export \
   --output export.json
 ```
 
-## Future Enhancements (Phase 2 & 3)
+## Potential Future Enhancements
 
-### Phase 2 (Enhanced Features)
-- Date range filtering
-- More advanced STIX mappings
-- CSV field customization UI
-- Export templates/presets
+> **Note**: These are ideas for potential future improvements that may or may not be implemented based on user needs and priorities.
 
-### Phase 3 (Advanced Features)
-- Save export configurations per user
-- Chunked exports for very large datasets
-- Scheduled/automated exports
-- Advanced STIX relationship types
-- TLP markings integration
+### Phase 2 Ideas (Enhanced Features)
+- **Date range filtering** - Export nodes created/updated within a specific time period
+- **More advanced STIX mappings** - Better automatic detection and mapping to STIX object types
+- **CSV field customization UI** - Let users choose which fields to include in CSV exports
+- **Export templates/presets** - Save common export configurations for quick reuse
+
+### Phase 3 Ideas (Advanced Features)
+- **Save export configurations per user** - User-specific saved presets stored in database
+- **Chunked exports for very large datasets** - Stream large exports to handle 1000+ nodes
+- **Scheduled/automated exports** - Periodic exports or webhook-triggered exports
+- **Advanced STIX relationship types** - More specific relationship mappings beyond "related-to"
+- **TLP markings integration** - Add Traffic Light Protocol (TLP) markings to STIX exports
 
 ## Testing
 
