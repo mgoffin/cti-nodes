@@ -42,6 +42,10 @@ Thumbs.db
 *.sqlite3
 backend/data/
 
+# Database backups
+nodes-backup-*.tar.gz
+nodes.db.backup.*
+
 # Testing
 .pytest_cache/
 .coverage

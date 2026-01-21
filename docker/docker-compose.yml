@@ -1,3 +1,21 @@
+# Nodes - Docker Compose Configuration (Production)
+#
+# DATA PERSISTENCE WARNING:
+# Your database is stored in the 'nodes-data' Docker volume.
+# This volume persists even when containers are removed/rebuilt.
+#
+# SAFE COMMANDS:
+#   docker-compose down                  ✅ Stops containers, keeps data
+#   docker-compose up --build            ✅ Rebuilds image, keeps data
+#   docker-compose restart               ✅ Restarts containers, keeps data
+#
+# DANGEROUS COMMANDS:
+#   docker-compose down -v               ❌ DELETES YOUR DATA!
+#   docker volume rm nodes-data          ❌ DELETES YOUR DATA!
+#   docker system prune --volumes        ❌ DELETES YOUR DATA!
+#
+# Regular backups recommended! See README for backup/restore commands.
+
 services:
   nodes:
     build:
@@ -7,7 +25,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - nodes-data:/app/data
+      - nodes-data:/app/data  # Named volume for database persistence
     environment:
       - NODES_DEBUG=false
       - NODES_DATABASE_PATH=/app/data/nodes.db
@@ -23,4 +41,4 @@ services:
 
 volumes:
   nodes-data:
-    name: nodes-data
+    name: nodes-data  # Named volume persists between container rebuilds

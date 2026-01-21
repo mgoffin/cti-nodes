@@ -159,12 +159,12 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
 
   const handleAcceptAllEntitySuggestions = async () => {
     if (!entitySuggestionsData?.suggestions || entitySuggestionsData.suggestions.length === 0) return
-    
+
     try {
       for (const suggestion of entitySuggestionsData.suggestions) {
-        await extractedApi.addToNode(nodeId, { 
-          type: suggestion.type, 
-          value: suggestion.value 
+        await extractedApi.addToNode(nodeId, {
+          type: suggestion.type,
+          value: suggestion.value
         })
       }
       queryClient.invalidateQueries({ queryKey: ['node', nodeId] })
@@ -178,7 +178,7 @@ export default function ExtractedManager({ nodeId, extracted }: ExtractedManager
 
   const handleRejectAllEntitySuggestions = async () => {
     if (!entitySuggestionsData?.suggestions || entitySuggestionsData.suggestions.length === 0) return
-    
+
     try {
       for (const suggestion of entitySuggestionsData.suggestions) {
         await extractedApi.rejectEntitySuggestion({

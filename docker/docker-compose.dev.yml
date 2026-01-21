@@ -1,3 +1,19 @@
+# Nodes - Docker Compose Configuration (Development)
+#
+# This compose file mounts your source code for hot-reload development.
+# Code changes are reflected instantly without rebuilding.
+#
+# DATA PERSISTENCE:
+# Uses the same 'nodes-data' volume as production compose file.
+# You can safely switch between dev and prod modes - your data persists!
+#
+# SAFE COMMANDS:
+#   docker-compose -f docker/docker-compose.dev.yml down     ✅ Stops containers, keeps data
+#   docker-compose -f docker/docker-compose.dev.yml restart  ✅ Restarts containers, keeps data
+#
+# DANGEROUS COMMANDS:
+#   docker-compose -f docker/docker-compose.dev.yml down -v  ❌ DELETES YOUR DATA!
+
 services:
   nodes-dev:
     build:
@@ -19,7 +35,7 @@ services:
       - ../frontend/package.json:/app/frontend/package.json
       - ../frontend/tailwind.config.js:/app/frontend/tailwind.config.js
       - ../frontend/eslint.config.js:/app/frontend/eslint.config.js
-      # Persistent data
+      # Persistent data - SAME VOLUME as production!
       - nodes-data:/app/data
       # Exclude node_modules and Python cache (use container versions)
       - /app/frontend/node_modules
@@ -38,4 +54,4 @@ services:
 
 volumes:
   nodes-data:
-    name: nodes-data
+    name: nodes-data  # Named volume persists between container rebuilds
