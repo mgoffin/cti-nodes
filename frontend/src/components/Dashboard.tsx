@@ -4,12 +4,15 @@ import { useQuery } from '@tanstack/react-query'
 import { nodesApi, searchApi } from '../api/client'
 import NodeList from './NodeList'
 import GraphView from './GraphView'
+import ExportButton from './ExportButton'
 
 type ViewMode = 'list' | 'graph'
 
 export default function Dashboard() {
   const [searchParams] = useSearchParams()
   const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set())
   const searchQuery = searchParams.get('q')
 
   // Fetch nodes or search results
@@ -23,6 +26,35 @@ export default function Dashboard() {
       return nodesApi.list()
     },
   })
+
+  const handleSelectionChange = (nodeId: string, selected: boolean) => {
+    setSelectedNodeIds(prev => {
+      const newSet = new Set(prev)
+      if (selected) {
+        newSet.add(nodeId)
+      } else {
+        newSet.delete(nodeId)
+      }
+      return newSet
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (!nodes) return
+    
+    if (selectedNodeIds.size === nodes.length) {
+      setSelectedNodeIds(new Set())
+    } else {
+      setSelectedNodeIds(new Set(nodes.map(n => n.id)))
+    }
+  }
+
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode)
+    if (selectionMode) {
+      setSelectedNodeIds(new Set())
+    }
+  }
 
   if (isLoading) {
     return (
@@ -49,42 +81,73 @@ export default function Dashboard() {
             {searchQuery ? `Search: "${searchQuery}"` : 'All Nodes'}
           </h1>
           <p className="theme-text-muted mt-1">
-            {nodes?.length || 0} node{nodes?.length !== 1 ? 's' : ''} found
+            {nodes?.length || 0} node{nodes?.length !== 1 ? 's' : ''}
+            {selectionMode && selectedNodeIds.size > 0 && (
+              <span> • {selectedNodeIds.size} selected</span>
+            )}
           </p>
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center space-x-1 toggle-container rounded-lg p-1">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'list' ? 'toggle-btn-active' : 'toggle-btn-inactive'
-            }`}
-          >
-            <span className="flex items-center space-x-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-              <span>List</span>
-            </span>
-          </button>
-          <button
-            onClick={() => setViewMode('graph')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'graph' ? 'toggle-btn-active' : 'toggle-btn-inactive'
-            }`}
-          >
-            <span className="flex items-center space-x-2">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <circle cx="12" cy="5" r="3" strokeWidth={2} />
-                <circle cx="5" cy="19" r="3" strokeWidth={2} />
-                <circle cx="19" cy="19" r="3" strokeWidth={2} />
-                <line x1="12" y1="8" x2="5" y2="16" strokeWidth={2} />
-                <line x1="12" y1="8" x2="19" y2="16" strokeWidth={2} />
-              </svg>
-              <span>Graph</span>
-            </span>
-          </button>
+        {/* Actions */}
+        <div className="flex items-center space-x-3">
+          {/* Export button (when nodes selected) */}
+          {selectionMode && selectedNodeIds.size > 0 && (
+            <ExportButton nodeIds={Array.from(selectedNodeIds)} />
+          )}
+
+          {/* Selection mode toggle */}
+          {nodes && nodes.length > 0 && viewMode === 'list' && (
+            <button
+              onClick={toggleSelectionMode}
+              className={`btn ${selectionMode ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              {selectionMode ? 'Cancel' : 'Select Nodes'}
+            </button>
+          )}
+
+          {/* Select All button (when in selection mode) */}
+          {selectionMode && nodes && nodes.length > 0 && (
+            <button
+              onClick={handleSelectAll}
+              className="btn btn-secondary"
+            >
+              {selectedNodeIds.size === nodes.length ? 'Deselect All' : 'Select All'}
+            </button>
+          )}
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center space-x-1 toggle-container rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'list' ? 'toggle-btn-active' : 'toggle-btn-inactive'
+              }`}
+            >
+              <span className="flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                <span>List</span>
+              </span>
+            </button>
+            <button
+              onClick={() => setViewMode('graph')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'graph' ? 'toggle-btn-active' : 'toggle-btn-inactive'
+              }`}
+            >
+              <span className="flex items-center space-x-2">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="5" r="3" strokeWidth={2} />
+                  <circle cx="5" cy="19" r="3" strokeWidth={2} />
+                  <circle cx="19" cy="19" r="3" strokeWidth={2} />
+                  <line x1="12" y1="8" x2="5" y2="16" strokeWidth={2} />
+                  <line x1="12" y1="8" x2="19" y2="16" strokeWidth={2} />
+                </svg>
+                <span>Graph</span>
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -110,7 +173,12 @@ export default function Dashboard() {
       {/* Content */}
       {nodes && nodes.length > 0 && (
         viewMode === 'list' ? (
-          <NodeList nodes={nodes} />
+          <NodeList
+            nodes={nodes}
+            selectable={selectionMode}
+            selectedIds={selectedNodeIds}
+            onSelectionChange={handleSelectionChange}
+          />
         ) : (
           <GraphView nodes={nodes} />
         )

@@ -204,3 +204,27 @@ export interface ProfileUpdate {
   avatar_url?: string | null
   theme_preference?: 'light' | 'dark' | 'system' | null
 }
+
+// Export types
+export interface ExportOptions {
+  format: 'json' | 'csv' | 'stix'
+  include_tags: boolean
+  include_system_tags: boolean
+  include_extracted: boolean
+  include_edges: boolean
+  include_comments: boolean
+  include_related_nodes: boolean
+  related_depth: number
+  entity_types: string[] | null
+}
+
+export interface ExportPreview {
+  node_count: number
+  tag_count: number
+  entity_count: number
+  edge_count: number
+  comment_count: number
+  related_node_count: number
+  estimated_size_kb: number
+  warnings: string[]
+}

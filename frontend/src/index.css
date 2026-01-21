@@ -463,3 +463,76 @@ html.dark .suggestion-btn-reject {
 html.dark .suggestion-btn-reject:hover {
   background-color: rgba(127, 29, 29, 0.3); /* red-900/30 */
 }
+
+/* Export modal styles */
+html.light .export-modal {
+  @apply bg-white border-slate-200;
+}
+
+html.dark .export-modal {
+  @apply bg-slate-800 border-slate-700;
+}
+
+html.light .export-modal-header {
+  @apply bg-white border-slate-200;
+}
+
+html.dark .export-modal-header {
+  @apply bg-slate-800 border-slate-700;
+}
+
+html.light .export-modal-content {
+  @apply bg-white;
+}
+
+html.dark .export-modal-content {
+  @apply bg-slate-800;
+}
+
+html.light .export-modal-footer {
+  @apply bg-white border-slate-200;
+}
+
+html.dark .export-modal-footer {
+  @apply bg-slate-800 border-slate-700;
+}
+
+html.light .export-modal-text {
+  @apply text-slate-900;
+}
+
+html.dark .export-modal-text {
+  @apply text-slate-100;
+}
+
+html.light .export-modal-text-secondary {
+  @apply text-slate-700;
+}
+
+html.dark .export-modal-text-secondary {
+  @apply text-slate-300;
+}
+
+html.light .export-modal-text-muted {
+  @apply text-slate-600;
+}
+
+html.dark .export-modal-text-muted {
+  @apply text-slate-400;
+}
+
+html.light .export-modal-close-btn {
+  @apply text-slate-500 hover:text-slate-700;
+}
+
+html.dark .export-modal-close-btn {
+  @apply text-slate-400 hover:text-slate-200;
+}
+
+html.light .export-stat-card {
+  @apply bg-slate-50;
+}
+
+html.dark .export-stat-card {
+  @apply bg-slate-900/50;
+}

@@ -26,6 +26,8 @@ import type {
   ProfileUpdate,
   Comment,
   CommentCreate,
+  ExportOptions,
+  ExportPreview,
 } from '../types'
 
 const api = axios.create({
@@ -270,6 +272,21 @@ export const commentsApi = {
   },
 }
 
+// Export API
+export const exportApi = {
+  preview: async (nodeIds: string[], options: ExportOptions): Promise<ExportPreview> => {
+    const { data } = await api.post('/export/preview', { node_ids: nodeIds, options })
+    return data
+  },
+
+  export: async (nodeIds: string[], options: ExportOptions): Promise<Blob> => {
+    const { data } = await api.post('/export', { node_ids: nodeIds, options }, {
+      responseType: 'blob',
+    })
+    return data
+  },
+}
+
 export const apiClient = {
   nodes: nodesApi,
   search: searchApi,
@@ -279,6 +296,7 @@ export const apiClient = {
   auth: authApi,
   users: usersApi,
   comments: commentsApi,
+  export: exportApi,
 }
 
 export default api

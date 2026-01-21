@@ -10,6 +10,7 @@ import ExtractedManager from './ExtractedManager'
 import SelectableContent from './SelectableContent'
 import ClickableSource from './ClickableSource'
 import CommentManager from './CommentManager'
+import ExportButton from './ExportButton'
 
 export default function NodeDetail() {
   const { nodeId } = useParams<{ nodeId: string }>()
@@ -72,6 +73,7 @@ export default function NodeDetail() {
         </Link>
 
         <div className="flex items-center space-x-2">
+          {nodeId && <ExportButton nodeIds={[nodeId]} />}
           <button onClick={handleDelete} className="btn btn-danger">
             Delete
           </button>

@@ -300,6 +300,45 @@ class Comment(CommentBase):
         from_attributes = True
 
 
+# --- Export Schemas ---
+
+
+class ExportOptions(BaseModel):
+    """Options for exporting nodes."""
+
+    format: str = Field(..., pattern="^(json|csv|stix)$", description="Export format: json, csv, or stix")
+    include_tags: bool = Field(default=True, description="Include tags in export")
+    include_system_tags: bool = Field(default=True, description="Include system tags (datetime, source)")
+    include_extracted: bool = Field(default=True, description="Include extracted entities")
+    include_edges: bool = Field(default=False, description="Include relationships/edges")
+    include_comments: bool = Field(default=False, description="Include comments")
+    include_related_nodes: bool = Field(default=False, description="Include related nodes")
+    related_depth: int = Field(default=1, ge=1, le=3, description="Depth for related nodes (1-3)")
+    entity_types: Optional[list[str]] = Field(
+        default=None, description="Filter specific entity types. If None, includes all."
+    )
+
+
+class ExportRequest(BaseModel):
+    """Request schema for exporting nodes."""
+
+    node_ids: list[str] = Field(..., min_items=1, description="List of node IDs to export")
+    options: ExportOptions
+
+
+class ExportPreview(BaseModel):
+    """Preview of what will be exported."""
+
+    node_count: int
+    tag_count: int
+    entity_count: int
+    edge_count: int
+    comment_count: int
+    related_node_count: int
+    estimated_size_kb: int
+    warnings: list[str] = Field(default_factory=list)
+
+
 # Fix forward references
 Node.model_rebuild()
 NodeWithRelations.model_rebuild()
